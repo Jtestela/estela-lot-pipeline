@@ -333,13 +333,15 @@ let _pendingWrite = false;
 
 function loadDeals(){try{const s=localStorage.getItem(LS_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
 function saveDeals(){
+  const _ts = Date.now();
   localStorage.setItem(LS_KEY,JSON.stringify(deals));
+  localStorage.setItem(LS_KEY+'_savedAt', String(_ts));
   // Firebase sync — primary cloud storage
   if(fbReady){
     _pendingWrite = true;
     updateSyncStatus('saving');
     fbRef.set(deals)
-      .then(()=>{ _pendingWrite = false; updateSyncStatus('saved'); })
+      .then(()=>{ _pendingWrite = false; localStorage.setItem(LS_KEY+'_fbSyncedAt', String(_ts)); updateSyncStatus('saved'); })
       .catch(()=>{ _pendingWrite = false; updateSyncStatus('error'); });
   }
   // OneDrive folder backup (optional)
@@ -1249,6 +1251,18 @@ fbRef.on('value', snapshot => {
       render();
       showToast('Data updated to latest version ✅','green');
       return;
+    }
+    // On first load: if local was saved after last confirmed Firebase sync,
+    // local data is newer (e.g. deal added just before refresh) — push it up.
+    if(!fbReady){
+      const savedAt = parseInt(localStorage.getItem(LS_KEY+'_savedAt')||'0');
+      const fbSyncedAt = parseInt(localStorage.getItem(LS_KEY+'_fbSyncedAt')||'0');
+      if(savedAt > fbSyncedAt){
+        fbReady = true;
+        saveDeals();
+        updateSyncStatus('saved');
+        return;
+      }
     }
     const incoming = JSON.stringify(data);
     if(incoming !== JSON.stringify(deals)){
