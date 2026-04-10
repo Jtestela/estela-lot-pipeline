@@ -529,6 +529,14 @@ async function saveFileToFolder(dealAddress, file){
   }
 }
 
+async function createDealFolder(dealAddress){
+  if(!docsFolderHandle||!dealAddress) return;
+  try{
+    const folderName=sanitize(dealAddress.split(',')[0]);
+    await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
+  }catch(e){}
+}
+
 async function openSavedFile(att){
   if(!att.savedToFolder||!docsFolderHandle){showToast('Set your Documents folder first.','red');return;}
   try{
@@ -748,6 +756,7 @@ function saveDeal(){
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();closeOverlay('editOverlay');render();showToast('Deal saved!','green');
   if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
+  if(docsFolderHandle&&deal.stage!=='Cancelled') createDealFolder(deal.address);
 }
 
 function confirmDelete(){const d=deals.find(x=>x.id===editingId);if(!d)return;document.getElementById('confirmName').textContent=d.address;document.getElementById('confirmOverlay').classList.add('open');}
