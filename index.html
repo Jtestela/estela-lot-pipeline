@@ -1231,10 +1231,11 @@ applyDealUpdates();
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
 // ── FIREBASE REAL-TIME LISTENER ───────────────────────────────────────────────
-// On first connect: if Firebase has data pull it down; if empty push local data up.
-// On any subsequent change from another device: update instantly.
+// On first connect: load Firebase data if it's newer than local.
+// After initial load (fbReady = true): local is always authoritative — never overwrite from Firebase.
 fbRef.on('value', snapshot => {
   if(_pendingWrite) return; // our own write echoing back — ignore
+  if(fbReady) return;       // initial sync done — local wins from here on
   let data = snapshot.val();
   // Firebase can return an object with numeric keys — convert to array if needed
   if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
