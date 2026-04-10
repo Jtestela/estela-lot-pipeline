@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <title>Estela Realty — Deal Pipeline</title>
 <style>
 :root{--blue-dark:#1F4E79;--blue-mid:#2E75B6;--blue-light:#DBEAFE;--orange:#C55A11;--red-dark:#843C0C;--green-dark:#375623;--teal-dark:#0F766E;--purple:#5B3A8E;--gray-bg:#F4F6F9;--gray-border:#DDE1E7;--text:#1a1a2e;--text-light:#6B7280;--white:#fff;--red-alert:#DC2626;--yellow:#D97706;--green-ok:#16A34A;}
@@ -276,6 +278,19 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const _now = new Date(); const TODAY = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate());
 const LS_KEY = 'estelaDeals_v3';
+
+// ── FIREBASE ──────────────────────────────────────────────────────────────────
+firebase.initializeApp({
+  apiKey: "AIzaSyCiifdrc_F0xaAw0lMYNU7zZwLxmjbsTpE",
+  authDomain: "estela-lot-pipeline.firebaseapp.com",
+  databaseURL: "https://estela-lot-pipeline-default-rtdb.firebaseio.com",
+  projectId: "estela-lot-pipeline",
+  storageBucket: "estela-lot-pipeline.firebasestorage.app",
+  messagingSenderId: "313594205640",
+  appId: "1:313594205640:web:f332efde4bf60ddd985cfd"
+});
+const fbRef = firebase.database().ref('deals');
+let fbReady = false;
 const IDB_DB = 'estelaFS'; const IDB_STORE = 'handles';
 const STAGES = [
   {key:'Offer Letter',          cls:'offer',  hdr:'sh-offer',  badge:'background:#DBEAFE;color:#1D4ED8'},
@@ -311,10 +326,18 @@ let dataFolderHandle = null;
 function loadDeals(){try{const s=localStorage.getItem(LS_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
 function saveDeals(){
   localStorage.setItem(LS_KEY,JSON.stringify(deals));
+  // Firebase sync — primary cloud storage
+  if(fbReady){
+    updateSyncStatus('saving');
+    fbRef.set(deals)
+      .then(()=>updateSyncStatus('saved'))
+      .catch(()=>updateSyncStatus('error'));
+  }
+  // OneDrive folder backup (optional)
   if(dataFolderHandle){
     dataFolderHandle.getFileHandle('deals_data.json',{create:true}).then(fh=>
       fh.createWritable().then(w=>w.write(JSON.stringify(deals,null,2)).then(()=>w.close()))
-    ).then(()=>updateSyncStatus('saved')).catch(()=>updateSyncStatus('error'));
+    ).catch(()=>{});
   }
 }
 function updateSyncStatus(state){
@@ -322,6 +345,7 @@ function updateSyncStatus(state){
   if(!el)return;
   if(state==='saved'){el.textContent='☁️ Synced';el.className='folder-status';}
   else if(state==='loaded'){el.textContent='☁️ Synced';el.className='folder-status';}
+  else if(state==='saving'){el.textContent='☁️ Saving…';el.className='folder-status';}
   else if(state==='error'){el.textContent='⚠️ Sync error';el.className='folder-status unset';}
   else if(state==='set'){el.textContent='☁️ Synced';el.className='folder-status';}
 }
@@ -1177,6 +1201,33 @@ applyDealUpdates();
 })();
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
+// ── FIREBASE REAL-TIME LISTENER ───────────────────────────────────────────────
+// On first connect: if Firebase has data pull it down; if empty push local data up.
+// On any subsequent change from another device: update instantly.
+fbRef.on('value', snapshot => {
+  let data = snapshot.val();
+  // Firebase can return an object with numeric keys — convert to array if needed
+  if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
+  if(data && Array.isArray(data) && data.length > 0){
+    const incoming = JSON.stringify(data);
+    if(incoming !== JSON.stringify(deals)){
+      deals = data;
+      nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+      localStorage.setItem(LS_KEY, JSON.stringify(deals));
+      mergeNewDeals();
+      applyDealUpdates();
+      render();
+    }
+    fbReady = true;
+    updateSyncStatus('saved');
+  } else {
+    // Firebase is empty — first time setup: push local deals up
+    fbReady = true;
+    saveDeals();
+    updateSyncStatus('saved');
+  }
+});
+
 Promise.all([loadFolderHandle(), loadDataFolder()]).then(()=>render());
 </script>
 </body>
