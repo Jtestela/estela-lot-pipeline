@@ -1156,7 +1156,7 @@ function mergeNewDeals(){
 }
 // applyDealUpdates uses versioned patches — each deal stores _patchedTo so patches only ever run once.
 // To add new corrections: bump PATCH_VERSION and add entries with v: PATCH_VERSION.
-const PATCH_VERSION = 2;
+const PATCH_VERSION = 3;
 function applyDealUpdates(){
   const updates=[
     // v1 — initial data corrections (stage, spv, dates, notes)
@@ -1179,6 +1179,21 @@ function applyDealUpdates(){
     {v:2,parcel:'3579-003-081',patch:{address:'00 SW 112th St (3579-003-081), Ocala, FL 34476'}},
     {v:2,parcel:'3578-009-006',patch:{address:'00 SW 41 Ave (3578-009-006), Ocala, FL 34476'}},
     {v:2,parcel:'3578-030-017',patch:{address:'00 SW 41st Ave (3578-030-017), Ocala, FL 34476'}},
+    // v3 — correct all stages to current reality (Apr 10 2026)
+    {v:3,parcel:'3507-008-022',patch:{stage:'Due Diligences',spv:'Estela Specs 9 LLC',escrowPaid:false}},
+    {v:3,parcel:'3579-003-056',patch:{stage:'Due Diligences',escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11'}},
+    {v:3,parcel:'07-11-31-7017-00030-0190',patch:{stage:'Permitting',spv:'Estela Specs 7 LLC',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7017-00030-0180',patch:{stage:'Permitting',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7017-00030-0170',patch:{stage:'Permitting',spv:'Estela Specs 7 LLC',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7037-01060-0110',patch:{stage:'Permitting',escrowPaid:true}},
+    {v:3,parcel:'3506-017-028',patch:{stage:'Permitting',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7037-01440-0190',patch:{stage:'Permitting',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7012-00180-0590',patch:{stage:'Closed / Purchased',spv:'Estela Specs 9 LLC',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7037-01190-0020',patch:{stage:'Closed / Purchased',spv:'Estela Specs 9 LLC',escrowPaid:true}},
+    {v:3,parcel:'SEC 37 BL 55 LT 5',patch:{stage:'Due Diligences',escrowPaid:false,dd:'2026-04-10'}},
+    {v:3,parcel:'3578-009-006',patch:{stage:'Due Diligences',spv:'Estela Specs 9 LLC',escrowPaid:false,dd:'2026-04-13'}},
+    {v:3,parcel:'3579-003-017',patch:{stage:'Due Diligences',escrowPaid:false,dd:'2026-04-13'}},
+    {v:3,parcel:'3579-003-081',patch:{stage:'Cancelled',escrowPaid:false}},
   ];
   let changed=false;
   updates.forEach(u=>{
