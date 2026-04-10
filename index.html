@@ -329,16 +329,18 @@ let deals = loadDeals(), activeFilter = 'All', editingId = null, pendingAttachme
 let nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
 let docsFolderHandle = null;
 let dataFolderHandle = null;
+let _pendingWrite = false;
 
 function loadDeals(){try{const s=localStorage.getItem(LS_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
 function saveDeals(){
   localStorage.setItem(LS_KEY,JSON.stringify(deals));
   // Firebase sync — primary cloud storage
   if(fbReady){
+    _pendingWrite = true;
     updateSyncStatus('saving');
     fbRef.set(deals)
-      .then(()=>updateSyncStatus('saved'))
-      .catch(()=>updateSyncStatus('error'));
+      .then(()=>{ _pendingWrite = false; updateSyncStatus('saved'); })
+      .catch(()=>{ _pendingWrite = false; updateSyncStatus('error'); });
   }
   // OneDrive folder backup (optional)
   if(dataFolderHandle){
@@ -606,6 +608,8 @@ function updateFolderHint(address){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
+  const scrollPos={};
+  document.querySelectorAll('.stage-body[data-stage]').forEach(el=>{scrollPos[el.dataset.stage]=el.scrollTop;});
   const filtered=activeFilter==='All'?deals:deals.filter(d=>d.stage===activeFilter);
   const total=deals.reduce((s,d)=>s+Number(d.amount),0);
   const alertDeals=deals.filter(d=>d.stage!=='Cancelled'&&hasAlert(d));
@@ -635,6 +639,7 @@ function render(){
   });
   html+='</div>';
   document.getElementById('app').innerHTML=html;
+  document.querySelectorAll('.stage-body[data-stage]').forEach(el=>{if(scrollPos[el.dataset.stage])el.scrollTop=scrollPos[el.dataset.stage];});
 }
 
 function renderCard(d,s){
@@ -1227,6 +1232,7 @@ applyDealUpdates();
 // On first connect: if Firebase has data pull it down; if empty push local data up.
 // On any subsequent change from another device: update instantly.
 fbRef.on('value', snapshot => {
+  if(_pendingWrite) return; // our own write echoing back — ignore
   let data = snapshot.val();
   // Firebase can return an object with numeric keys — convert to array if needed
   if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
