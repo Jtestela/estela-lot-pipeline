@@ -390,16 +390,8 @@ async function readDealsFromFile(){
     const parsed=JSON.parse(text);
     if(Array.isArray(parsed)&&parsed.length>0){
       deals=parsed;
+      nextId=Math.max(...deals.map(d=>d.id),0)+1;
       localStorage.setItem(LS_KEY,JSON.stringify(deals));
-      mergeNewDeals();
-      applyDealUpdates();
-      (function dedupByParcel(){
-        const parcelToIds={};
-        deals.forEach(d=>{if(d.parcel){parcelToIds[d.parcel]=(parcelToIds[d.parcel]||[]).concat(d.id);}});
-        const toRemove=[];
-        Object.values(parcelToIds).forEach(ids=>{if(ids.length>1){const sorted=ids.slice().sort((a,b)=>a-b);toRemove.push(...sorted.slice(1));}});
-        if(toRemove.length){deals=deals.filter(d=>!toRemove.includes(d.id));saveDeals();}
-      })();
       render();
       showToast('Deals loaded from OneDrive ✅','green');
     }
@@ -1154,90 +1146,10 @@ function buildReportHTML(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-function mergeNewDeals(){
-  const incoming=[
-    {id:15,stage:'Under Contract (Escrow)',address:'160 Laramie Dr, Palm Coast, FL 32137',parcel:'SEC 37 BL 55 LT 5',amount:77000,spv:'Estela Specs 2 LLC',close:'2026-04-29',escrow:'2026-04-07',escrowPaid:false,dd:'2026-04-10',notes:'Earnest money due Apr 7. DD expires Apr 10.',attachments:[]},
-    {id:17,stage:'Under Contract (Escrow)',address:'00 SW 41 Ave (3578-009-006), Ocala, FL 34476',parcel:'3578-009-006',amount:67500,spv:'Estela Specs 9 LLC',close:'2026-04-30',escrow:'2026-04-06',escrowPaid:false,dd:'2026-04-13',notes:'Escrow $1,000 due TODAY Apr 6. DD expires Apr 13. All American Land Title - Heather Walstrom hwalstrom@aalandtitle.com.',attachments:[]},
-    {id:16,stage:'Under Contract (Escrow)',address:'68 Lake Success Dr, Palm Coast, FL 32137',parcel:'SEC 37 BL 83 LT 3',amount:70000,spv:'Estela Specs 7 LLC',close:'2026-04-30',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-11',notes:'Escrow due Apr 8. DD expires Apr 11. Pioneer Title - Karen Alford.',attachments:[]},
-    {id:18,stage:'Under Contract (Escrow)',address:'00 SW 110th Ln (3579-003-017), Ocala, FL 34476',parcel:'3579-003-017',amount:75000,spv:'Estela Specs 1 LLC',close:'2026-04-28',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-13',notes:'Escrow $1,000 due Apr 8 (3 biz days from 4/3). DD expires Apr 13. MLS Title - Janet Diiiorio Janet@mlstitleocala.com 352-509-3044.',attachments:[]},
-    {id:19,stage:'Under Contract (Escrow)',address:'00 SW 41st Ave (3578-030-017), Ocala, FL 34476',parcel:'3578-030-017',amount:70000,spv:'Estela Specs 1 LLC',close:'2026-04-27',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-16',notes:'Assignment contract (2-parcel deal w/ 3579-003-081). Escrow $1,000 due Apr 8 (48 biz hrs from 4/6). DD expires Apr 16. Atlas Title - Molly.',attachments:[]},
-    {id:20,stage:'Under Contract (Escrow)',address:'00 SW 112th St (3579-003-081), Ocala, FL 34476',parcel:'3579-003-081',amount:70000,spv:'Estela Specs 1 LLC',close:'2026-04-27',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-16',notes:'Assignment contract (2-parcel deal w/ 3578-030-017). Escrow $1,000 due Apr 8 (48 biz hrs from 4/6). DD expires Apr 16. Atlas Title - Molly.',attachments:[]},
-    {id:21,stage:'Under Contract (Escrow)',address:'106 Ramblewood Dr, Palm Coast, FL 32164',parcel:'',amount:65000,spv:'Estela Specs 2 LLC',close:'2026-05-08',escrow:'2026-04-10',escrowPaid:false,dd:'2026-04-18',notes:'Assigned from Panhandle Property Solutions. Escrow $1,000 due Apr 10 (2 biz days from execution 4/8). DD expires Apr 18 (10 cal days). Baldwin Park Title.',attachments:[]},
-  ];
-  let changed=false;
-  incoming.forEach(nd=>{
-    const exists=deals.some(d=>d.address===nd.address||(nd.parcel&&nd.parcel===d.parcel));
-    if(!exists){deals.push(nd);changed=true;}
-  });
-  if(changed){nextId=Math.max(...deals.map(d=>d.id),0)+1;saveDeals();}
-}
-// applyDealUpdates uses versioned patches — each deal stores _patchedTo so patches only ever run once.
-// To add new corrections: bump PATCH_VERSION and add entries with v: PATCH_VERSION.
 const PATCH_VERSION = 3;
-function applyDealUpdates(){
-  const updates=[
-    // v1 — initial data corrections (spv, dates, notes — stage intentionally excluded: user-controlled)
-    {v:1,parcel:'3579-003-056',patch:{escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11',notes:'Executed contract Apr 1. Escrow due Apr 4. DD expires Apr 11. Brick City Title.'}},
-    {v:1,parcel:'3506-017-028',patch:{spv:'Estela Specs 1 LLC'}},
-    {v:1,parcel:'3579-002-029',patch:{close:'2026-04-10'}},
-    {v:1,parcel:'07-11-31-7017-00030-0190',patch:{escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
-    {v:1,parcel:'07-11-31-7017-00030-0180',patch:{spv:'Estela Specs 2 LLC',escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
-    {v:1,parcel:'07-11-31-7017-00030-0170',patch:{escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
-    {v:1,parcel:'07-11-31-7037-01060-0110',patch:{escrow:'2026-03-30',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Apr 5.'}},
-    {v:1,parcel:'SEC 37 BL 55 LT 5',patch:{escrowPaid:false,notes:'Earnest money due Apr 7. DD expires Apr 10.'}},
-    {v:1,parcel:'SEC 37 BL 83 LT 3',patch:{escrowPaid:false,notes:'Escrow due Apr 8. DD expires Apr 11. Pioneer Title - Karen Alford.'}},
-    {v:1,parcel:'3507-008-022',patch:{spv:'Estela Specs 9 LLC',close:'2026-04-16',escrow:'2026-03-31',escrowPaid:false,dd:'2026-04-05',notes:'Escrow overdue (due Mar 31). DD expires Apr 5. Cathy Morrison Title 863-732-8485.'}},
-    // v2 — rename 0/00 addresses to include parcel ID
-    {v:2,parcel:'3507-008-022',patch:{address:'00 SW 39th Ter (3507-008-022), Ocala, FL 34476'}},
-    {v:2,parcel:'3579-003-056',patch:{address:'00 SW 111th Pl (3579-003-056), Ocala, FL 34476'}},
-    {v:2,parcel:'3506-017-028',patch:{address:'0 SW 107th ST (3506-017-028), Ocala, FL 34476'}},
-    {v:2,parcel:'3579-002-029',patch:{address:'0 SW 110th ST (3579-002-029), Ocala, FL 34476'}},
-    {v:2,parcel:'3579-003-017',patch:{address:'00 SW 110th Ln (3579-003-017), Ocala, FL 34476'}},
-    {v:2,parcel:'3579-003-081',patch:{address:'00 SW 112th St (3579-003-081), Ocala, FL 34476'}},
-    {v:2,parcel:'3578-009-006',patch:{address:'00 SW 41 Ave (3578-009-006), Ocala, FL 34476'}},
-    {v:2,parcel:'3578-030-017',patch:{address:'00 SW 41st Ave (3578-030-017), Ocala, FL 34476'}},
-    // v3 — data corrections (escrowPaid, spv, dates — stage excluded: user-controlled)
-    {v:3,parcel:'3507-008-022',patch:{spv:'Estela Specs 9 LLC',escrowPaid:false}},
-    {v:3,parcel:'3579-003-056',patch:{escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11'}},
-    {v:3,parcel:'07-11-31-7017-00030-0190',patch:{spv:'Estela Specs 7 LLC',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7017-00030-0180',patch:{escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7017-00030-0170',patch:{spv:'Estela Specs 7 LLC',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7037-01060-0110',patch:{escrowPaid:true}},
-    {v:3,parcel:'3506-017-028',patch:{escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7037-01440-0190',patch:{escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7012-00180-0590',patch:{spv:'Estela Specs 9 LLC',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7037-01190-0020',patch:{spv:'Estela Specs 9 LLC',escrowPaid:true}},
-    {v:3,parcel:'SEC 37 BL 55 LT 5',patch:{escrowPaid:false,dd:'2026-04-10'}},
-    {v:3,parcel:'3578-009-006',patch:{spv:'Estela Specs 9 LLC',escrowPaid:false,dd:'2026-04-13'}},
-    {v:3,parcel:'3579-003-017',patch:{escrowPaid:false,dd:'2026-04-13'}},
-    {v:3,parcel:'3579-003-081',patch:{escrowPaid:false}},
-  ];
-  let changed=false;
-  updates.forEach(u=>{
-    const i=deals.findIndex(d=>d.parcel===u.parcel);
-    if(i>-1 && (deals[i]._patchedTo||0) < u.v){
-      Object.assign(deals[i],u.patch);
-      deals[i]._patchedTo=Math.max(deals[i]._patchedTo||0, u.v);
-      changed=true;
-    }
-  });
-  // Mark all deals as fully patched so future loads never re-apply old patches
-  deals.forEach(d=>{if((d._patchedTo||0)<PATCH_VERSION){d._patchedTo=PATCH_VERSION;changed=true;}});
-  if(changed)saveDeals();
-}
 document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-mergeNewDeals();
-applyDealUpdates();
-// Remove duplicate parcel entries — keep the LOWEST id (original with accumulated data)
-(function dedupByParcel(){
-  const parcelToIds={};
-  deals.forEach(d=>{if(d.parcel){parcelToIds[d.parcel]=(parcelToIds[d.parcel]||[]).concat(d.id);}});
-  const toRemove=[];
-  Object.values(parcelToIds).forEach(ids=>{
-    if(ids.length>1){const sorted=ids.slice().sort((a,b)=>a-b);toRemove.push(...sorted.slice(1));}
-  });
-  if(toRemove.length){deals=deals.filter(d=>!toRemove.includes(d.id));saveDeals();}
-})();
+// One-time migration: stamp any unpatched deals so they're never touched by old logic
+(function(){let c=false;deals.forEach(d=>{if((d._patchedTo||0)<PATCH_VERSION){d._patchedTo=PATCH_VERSION;c=true;}});if(c)saveDeals();})();
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
 // ── FIREBASE REAL-TIME LISTENER ───────────────────────────────────────────────
@@ -1250,30 +1162,14 @@ fbRef.on('value', snapshot => {
   // Firebase can return an object with numeric keys — convert to array if needed
   if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
   if(data && Array.isArray(data) && data.length > 0){
-    // Stale data check: all current deals have _patchedTo >= 2.
-    // If Firebase has deals missing this, the data is old — overwrite with DEFAULTS.
-    const isStale = data.some(d => !d._patchedTo || d._patchedTo < 2);
-    if(isStale){
+    // If local was saved after last confirmed Firebase sync, local is newer — push it up.
+    const savedAt = parseInt(localStorage.getItem(LS_KEY+'_savedAt')||'0');
+    const fbSyncedAt = parseInt(localStorage.getItem(LS_KEY+'_fbSyncedAt')||'0');
+    if(savedAt > fbSyncedAt){
       fbReady = true;
-      deals = JSON.parse(JSON.stringify(DEFAULTS));
-      nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
-      localStorage.setItem(LS_KEY, JSON.stringify(deals));
       saveDeals();
-      render();
-      showToast('Data updated to latest version ✅','green');
+      updateSyncStatus('saved');
       return;
-    }
-    // On first load: if local was saved after last confirmed Firebase sync,
-    // local data is newer (e.g. deal added just before refresh) — push it up.
-    if(!fbReady){
-      const savedAt = parseInt(localStorage.getItem(LS_KEY+'_savedAt')||'0');
-      const fbSyncedAt = parseInt(localStorage.getItem(LS_KEY+'_fbSyncedAt')||'0');
-      if(savedAt > fbSyncedAt){
-        fbReady = true;
-        saveDeals();
-        updateSyncStatus('saved');
-        return;
-      }
     }
     const incoming = JSON.stringify(data);
     if(incoming !== JSON.stringify(deals)){
