@@ -752,7 +752,7 @@ function saveDeal(){
   const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
-  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false};
+  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();closeOverlay('editOverlay');render();showToast('Deal saved!','green');
   if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
@@ -1047,6 +1047,7 @@ function colDrop(e,stageName){
   if(!deal||deal.stage===stageName)return;
   const oldStage=deal.stage;
   deal.stage=stageName;
+  deal._patchedTo=PATCH_VERSION;
   saveDeals();
   render();
   showToast(`Moved to ${stageName} ✓`,'green');
@@ -1175,8 +1176,8 @@ function mergeNewDeals(){
 const PATCH_VERSION = 3;
 function applyDealUpdates(){
   const updates=[
-    // v1 — initial data corrections (stage, spv, dates, notes)
-    {v:1,parcel:'3579-003-056',patch:{stage:'Under Contract (Escrow)',escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11',notes:'Executed contract Apr 1. Escrow due Apr 4. DD expires Apr 11. Brick City Title.'}},
+    // v1 — initial data corrections (spv, dates, notes — stage intentionally excluded: user-controlled)
+    {v:1,parcel:'3579-003-056',patch:{escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11',notes:'Executed contract Apr 1. Escrow due Apr 4. DD expires Apr 11. Brick City Title.'}},
     {v:1,parcel:'3506-017-028',patch:{spv:'Estela Specs 1 LLC'}},
     {v:1,parcel:'3579-002-029',patch:{close:'2026-04-10'}},
     {v:1,parcel:'07-11-31-7017-00030-0190',patch:{escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
@@ -1185,7 +1186,7 @@ function applyDealUpdates(){
     {v:1,parcel:'07-11-31-7037-01060-0110',patch:{escrow:'2026-03-30',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Apr 5.'}},
     {v:1,parcel:'SEC 37 BL 55 LT 5',patch:{escrowPaid:false,notes:'Earnest money due Apr 7. DD expires Apr 10.'}},
     {v:1,parcel:'SEC 37 BL 83 LT 3',patch:{escrowPaid:false,notes:'Escrow due Apr 8. DD expires Apr 11. Pioneer Title - Karen Alford.'}},
-    {v:1,parcel:'3507-008-022',patch:{stage:'Under Contract (Escrow)',spv:'Estela Specs 9 LLC',close:'2026-04-16',escrow:'2026-03-31',escrowPaid:false,dd:'2026-04-05',notes:'Escrow overdue (due Mar 31). DD expires Apr 5. Cathy Morrison Title 863-732-8485.'}},
+    {v:1,parcel:'3507-008-022',patch:{spv:'Estela Specs 9 LLC',close:'2026-04-16',escrow:'2026-03-31',escrowPaid:false,dd:'2026-04-05',notes:'Escrow overdue (due Mar 31). DD expires Apr 5. Cathy Morrison Title 863-732-8485.'}},
     // v2 — rename 0/00 addresses to include parcel ID
     {v:2,parcel:'3507-008-022',patch:{address:'00 SW 39th Ter (3507-008-022), Ocala, FL 34476'}},
     {v:2,parcel:'3579-003-056',patch:{address:'00 SW 111th Pl (3579-003-056), Ocala, FL 34476'}},
@@ -1195,21 +1196,21 @@ function applyDealUpdates(){
     {v:2,parcel:'3579-003-081',patch:{address:'00 SW 112th St (3579-003-081), Ocala, FL 34476'}},
     {v:2,parcel:'3578-009-006',patch:{address:'00 SW 41 Ave (3578-009-006), Ocala, FL 34476'}},
     {v:2,parcel:'3578-030-017',patch:{address:'00 SW 41st Ave (3578-030-017), Ocala, FL 34476'}},
-    // v3 — correct all stages to current reality (Apr 10 2026)
-    {v:3,parcel:'3507-008-022',patch:{stage:'Due Diligences',spv:'Estela Specs 9 LLC',escrowPaid:false}},
-    {v:3,parcel:'3579-003-056',patch:{stage:'Due Diligences',escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11'}},
-    {v:3,parcel:'07-11-31-7017-00030-0190',patch:{stage:'Permitting',spv:'Estela Specs 7 LLC',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7017-00030-0180',patch:{stage:'Permitting',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7017-00030-0170',patch:{stage:'Permitting',spv:'Estela Specs 7 LLC',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7037-01060-0110',patch:{stage:'Permitting',escrowPaid:true}},
-    {v:3,parcel:'3506-017-028',patch:{stage:'Permitting',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7037-01440-0190',patch:{stage:'Permitting',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7012-00180-0590',patch:{stage:'Closed / Purchased',spv:'Estela Specs 9 LLC',escrowPaid:true}},
-    {v:3,parcel:'07-11-31-7037-01190-0020',patch:{stage:'Closed / Purchased',spv:'Estela Specs 9 LLC',escrowPaid:true}},
-    {v:3,parcel:'SEC 37 BL 55 LT 5',patch:{stage:'Due Diligences',escrowPaid:false,dd:'2026-04-10'}},
-    {v:3,parcel:'3578-009-006',patch:{stage:'Due Diligences',spv:'Estela Specs 9 LLC',escrowPaid:false,dd:'2026-04-13'}},
-    {v:3,parcel:'3579-003-017',patch:{stage:'Due Diligences',escrowPaid:false,dd:'2026-04-13'}},
-    {v:3,parcel:'3579-003-081',patch:{stage:'Cancelled',escrowPaid:false}},
+    // v3 — data corrections (escrowPaid, spv, dates — stage excluded: user-controlled)
+    {v:3,parcel:'3507-008-022',patch:{spv:'Estela Specs 9 LLC',escrowPaid:false}},
+    {v:3,parcel:'3579-003-056',patch:{escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11'}},
+    {v:3,parcel:'07-11-31-7017-00030-0190',patch:{spv:'Estela Specs 7 LLC',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7017-00030-0180',patch:{escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7017-00030-0170',patch:{spv:'Estela Specs 7 LLC',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7037-01060-0110',patch:{escrowPaid:true}},
+    {v:3,parcel:'3506-017-028',patch:{escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7037-01440-0190',patch:{escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7012-00180-0590',patch:{spv:'Estela Specs 9 LLC',escrowPaid:true}},
+    {v:3,parcel:'07-11-31-7037-01190-0020',patch:{spv:'Estela Specs 9 LLC',escrowPaid:true}},
+    {v:3,parcel:'SEC 37 BL 55 LT 5',patch:{escrowPaid:false,dd:'2026-04-10'}},
+    {v:3,parcel:'3578-009-006',patch:{spv:'Estela Specs 9 LLC',escrowPaid:false,dd:'2026-04-13'}},
+    {v:3,parcel:'3579-003-017',patch:{escrowPaid:false,dd:'2026-04-13'}},
+    {v:3,parcel:'3579-003-081',patch:{escrowPaid:false}},
   ];
   let changed=false;
   updates.forEach(u=>{
@@ -1279,8 +1280,6 @@ fbRef.on('value', snapshot => {
       deals = data;
       nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
       localStorage.setItem(LS_KEY, JSON.stringify(deals));
-      mergeNewDeals();
-      applyDealUpdates();
       render();
     }
     fbReady = true;
