@@ -1216,6 +1216,19 @@ fbRef.on('value', snapshot => {
   // Firebase can return an object with numeric keys — convert to array if needed
   if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
   if(data && Array.isArray(data) && data.length > 0){
+    // Stale data check: all current deals have _patchedTo >= 2.
+    // If Firebase has deals missing this, the data is old — overwrite with DEFAULTS.
+    const isStale = data.some(d => !d._patchedTo || d._patchedTo < 2);
+    if(isStale){
+      fbReady = true;
+      deals = JSON.parse(JSON.stringify(DEFAULTS));
+      nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+      localStorage.setItem(LS_KEY, JSON.stringify(deals));
+      saveDeals();
+      render();
+      showToast('Data updated to latest version ✅','green');
+      return;
+    }
     const incoming = JSON.stringify(data);
     if(incoming !== JSON.stringify(deals)){
       deals = data;
