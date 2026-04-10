@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<title>Estela Realty — Deal Pipeline</title>
+<style>
+:root{--blue-dark:#1F4E79;--blue-mid:#2E75B6;--blue-light:#DBEAFE;--orange:#C55A11;--red-dark:#843C0C;--green-dark:#375623;--teal-dark:#0F766E;--purple:#5B3A8E;--gray-bg:#F4F6F9;--gray-border:#DDE1E7;--text:#1a1a2e;--text-light:#6B7280;--white:#fff;--red-alert:#DC2626;--yellow:#D97706;--green-ok:#16A34A;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var(--text);min-height:100vh;}
+/* NAV */
+.navbar{background:var(--blue-dark);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);position:sticky;top:0;z-index:100;}
+.navbar-brand{display:flex;align-items:center;gap:10px;color:#fff;font-size:17px;font-weight:700;}
+.dot{width:10px;height:10px;border-radius:50%;background:#4FC3F7;}
+.navbar-right{display:flex;align-items:center;gap:8px;}
+.navbar-date{color:#93C5FD;font-size:12px;}
+.btn-nav{border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;}
+.btn-add{background:#4FC3F7;color:var(--blue-dark);}
+.btn-folder{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);}
+.btn-nav:hover{opacity:.85;}
+.folder-status{font-size:11px;color:#86EFAC;display:flex;align-items:center;gap:4px;}
+.folder-status.unset{color:#FCA5A5;}
+/* KPI */
+.kpi-bar{display:flex;gap:14px;padding:16px 24px 6px;flex-wrap:wrap;}
+.kpi-card{background:#fff;border-radius:10px;padding:12px 20px;flex:1;min-width:150px;border-left:4px solid var(--blue-mid);box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.kpi-card.orange{border-left-color:var(--orange);}.kpi-card.red{border-left-color:var(--red-alert);}.kpi-card.green{border-left-color:var(--green-ok);}.kpi-card.purple{border-left-color:var(--purple);}
+.kpi-label{font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;}
+.kpi-value{font-size:24px;font-weight:700;margin-top:2px;}
+.kpi-sub{font-size:10px;color:var(--text-light);margin-top:1px;}
+/* ALERTS */
+.alerts-bar{padding:4px 24px 0;}
+.alert-strip{background:#FEF2F2;border:1.5px solid #FECACA;border-radius:8px;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.alert-title{font-size:11px;font-weight:700;color:var(--red-alert);}
+.alert-item{font-size:11px;color:#7F1D1D;}.alert-sep{color:#FCA5A5;}
+/* FILTER */
+.filter-bar{display:flex;gap:8px;padding:12px 24px 0;flex-wrap:wrap;align-items:center;}
+.filter-label{font-size:11px;color:var(--text-light);}
+.filter-btn{border:1.5px solid var(--gray-border);background:#fff;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text-light);}
+.filter-btn:hover{border-color:var(--blue-mid);color:var(--blue-mid);}
+.filter-btn.active{background:var(--blue-dark);border-color:var(--blue-dark);color:#fff;}
+/* BOARD */
+.board{display:flex;gap:14px;padding:14px 24px 32px;overflow-x:auto;align-items:flex-start;}
+.stage-col{min-width:275px;max-width:300px;flex:1;display:flex;flex-direction:column;}
+.stage-header{border-radius:10px 10px 0 0;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;}
+.stage-title{font-size:12px;font-weight:700;color:#fff;}.stage-badge{background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;}
+.stage-total{font-size:11px;color:rgba(255,255,255,.8);}
+.stage-body{background:#fff;border:1.5px solid var(--gray-border);border-top:none;border-radius:0 0 10px 10px;padding:8px;display:flex;flex-direction:column;gap:7px;min-height:60px;box-shadow:0 2px 8px rgba(0,0,0,.05);max-height:calc(100vh - 255px);overflow-y:auto;}
+.sh-offer{background:var(--blue-mid);}.sh-escrow{background:var(--orange);}.sh-dd{background:var(--red-dark);}.sh-permit{background:var(--green-dark);}.sh-closed{background:var(--teal-dark);}.sh-cancelled{background:#6B7280;}
+/* CARD */
+.deal-card{background:#fff;border:1.5px solid var(--gray-border);border-radius:8px;padding:10px 12px;cursor:pointer;transition:box-shadow .15s,transform .1s;position:relative;overflow:hidden;flex-shrink:0;}
+.deal-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);transform:translateY(-1px);}
+.deal-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:8px 0 0 8px;}
+.offer::before{background:var(--blue-mid);}.escrow::before{background:var(--orange);}.dd::before{background:var(--red-dark);}.permit::before{background:var(--green-dark);}.closed::before{background:var(--teal-dark);}.cancelled::before{background:#6B7280;}
+.card-alert-note{font-size:10px;color:var(--red-alert);font-weight:600;margin-bottom:3px;}
+.card-address{font-size:12px;font-weight:600;margin-bottom:5px;line-height:1.4;padding-right:48px;}
+.card-amount{font-size:16px;font-weight:700;color:var(--blue-dark);margin-bottom:6px;}
+.card-divider{border:none;border-top:1px solid var(--gray-border);margin:5px 0;}
+.card-meta{display:flex;flex-direction:column;gap:3px;}
+.card-row{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-light);}
+.card-icon{font-size:11px;width:14px;text-align:center;flex-shrink:0;}
+.card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;align-items:center;}
+.card-btn{background:none;border:none;cursor:pointer;font-size:13px;opacity:.45;padding:1px;}
+.card-btn:hover{opacity:1;}
+.attach-count{font-size:9px;background:var(--blue-light);color:var(--blue-mid);border-radius:4px;padding:1px 5px;font-weight:700;}
+.empty-col{text-align:center;color:#ccc;font-size:11px;padding:16px 0;}
+.deal-card.dragging{opacity:.4;transform:scale(.97);}
+.stage-body.drag-over{background:#EFF6FF;border-color:var(--blue-mid);outline:2px dashed var(--blue-mid);}
+.card-checks{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-border);}
+.card-check-label{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-light);cursor:pointer;user-select:none;}
+.card-check-label input[type=checkbox]{width:12px;height:12px;cursor:pointer;accent-color:var(--green-dark);}
+.card-check-label.checked{color:var(--green-dark);font-weight:600;}
+.card-check-label.not-approved{color:var(--red-dark);font-weight:600;}
+/* PILLS */
+.pill{display:inline-block;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;}
+.pill-ok{background:#DCFCE7;color:var(--green-ok);}.pill-warn{background:#FEF3C7;color:var(--yellow);}.pill-alert{background:#FEE2E2;color:var(--red-alert);}.pill-paid{background:#DCFCE7;color:var(--green-ok);}.pill-na{background:#F3F4F6;color:#9CA3AF;}.pill-blue{background:#DBEAFE;color:var(--blue-mid);}
+/* OVERLAYS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:14px;width:580px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .18s ease;}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-header{background:var(--blue-dark);color:#fff;padding:16px 20px 12px;border-radius:14px 14px 0 0;display:flex;align-items:flex-start;justify-content:space-between;}
+.modal-header h2{font-size:15px;font-weight:700;flex:1;padding-right:10px;line-height:1.4;}
+.modal-close{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;}
+.modal-body{padding:18px 20px;}
+.modal-footer{padding:12px 20px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--gray-border);}
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group.full{grid-column:1/-1;}
+.form-label{font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px;}
+.form-input,.form-select,.form-textarea{border:1.5px solid var(--gray-border);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--text);width:100%;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--blue-mid);}
+.form-textarea{resize:vertical;min-height:60px;}
+.form-divider{grid-column:1/-1;border:none;border-top:1px solid var(--gray-border);margin:4px 0;}
+.btn{border:none;border-radius:6px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;}
+.btn:hover{opacity:.85;}
+.btn-primary{background:var(--blue-dark);color:#fff;}.btn-danger{background:var(--red-alert);color:#fff;}.btn-ghost{background:#F3F4F6;color:var(--text);border:1.5px solid var(--gray-border);}
+/* ATTACHMENTS */
+.attach-section{margin-top:16px;border-top:1px solid var(--gray-border);padding-top:14px;}
+.attach-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.attach-title{font-size:12px;font-weight:700;color:var(--text);}
+.attach-subtitle{font-size:10px;color:var(--text-light);margin-top:1px;}
+.attach-folder-hint{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:8px 12px;font-size:11px;color:#166534;margin-bottom:10px;display:flex;align-items:flex-start;gap:6px;}
+.attach-folder-hint.warn{background:#FFFBEB;border-color:#FDE68A;color:#92400E;}
+.btn-attach{background:var(--blue-light);color:var(--blue-mid);border:1.5px solid #BFDBFE;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;}
+.btn-attach:hover{opacity:.85;}
+.attach-drop{border:2px dashed var(--gray-border);border-radius:8px;padding:14px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;}
+.attach-drop:hover,.attach-drop.dragover{border-color:var(--blue-mid);background:var(--blue-light);}
+.attach-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.attach-item{display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1px solid var(--gray-border);border-radius:6px;padding:6px 10px;}
+.attach-icon{font-size:15px;flex-shrink:0;}.attach-info{flex:1;min-width:0;}
+.attach-name{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.attach-path{font-size:10px;color:var(--text-light);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.attach-size{font-size:10px;color:var(--text-light);flex-shrink:0;}
+.attach-open{background:var(--blue-light);color:var(--blue-mid);border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.attach-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;flex-shrink:0;}
+.attach-del:hover{color:var(--red-alert);}
+/* DETAIL */
+.detail-row{display:flex;margin-bottom:8px;font-size:13px;}
+.detail-lbl{width:150px;color:var(--text-light);font-weight:500;flex-shrink:0;}
+.detail-val{font-weight:600;flex:1;}
+.detail-divider{border:none;border-top:1px solid var(--gray-border);margin:10px 0;}
+.stage-badge-pill{display:inline-block;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700;margin-bottom:14px;}
+/* CONFIRM */
+.confirm-modal{width:380px;}.confirm-body{padding:20px;text-align:center;}
+.confirm-body p{font-size:13px;color:var(--text-light);margin-top:8px;}.confirm-icon{font-size:36px;margin-bottom:8px;}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;border-radius:8px;padding:10px 18px;font-size:12px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+.toast.green{background:var(--green-ok);}.toast.red{background:var(--red-alert);}
+/* WEEKLY REPORT */
+.report-modal{width:700px;}
+.report-header-block{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;}
+.report-title-block{}
+.report-title{font-size:18px;font-weight:700;color:var(--blue-dark);}
+.report-subtitle{font-size:12px;color:var(--text-light);margin-top:2px;}
+.report-print-btn{background:var(--blue-dark);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;}
+.report-print-btn:hover{opacity:.85;}
+.report-section{margin-bottom:22px;}
+.report-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-light);border-bottom:2px solid var(--gray-border);padding-bottom:5px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.report-section-title span{font-size:13px;font-weight:700;color:var(--text);}
+.report-table{width:100%;border-collapse:collapse;font-size:12px;}
+.report-table th{background:#F8FAFC;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);padding:6px 10px;text-align:left;border-bottom:1.5px solid var(--gray-border);}
+.report-table td{padding:8px 10px;border-bottom:1px solid #F1F3F5;color:var(--text);vertical-align:middle;}
+.report-table tr:last-child td{border-bottom:none;}
+.report-table tr:hover td{background:#FAFBFC;}
+.report-empty{text-align:center;color:var(--text-light);font-size:12px;padding:14px 0;font-style:italic;}
+.rt-alert{color:var(--red-alert);font-weight:700;}
+.rt-warn{color:var(--yellow);font-weight:700;}
+.rt-ok{color:var(--green-ok);font-weight:600;}
+@media print{
+  .navbar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
+  #reportOverlay{position:static!important;background:none!important;display:block!important;}
+  .modal{box-shadow:none!important;max-height:none!important;width:100%!important;border-radius:0!important;}
+  .report-print-btn,.modal-footer,.modal-close{display:none!important;}
+  .modal-header{border-radius:0!important;}
+}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-brand"><div class="dot"></div>Estela Realty LLC &nbsp;·&nbsp; Deal Pipeline</div>
+  <div class="navbar-right">
+    <div class="folder-status unset" id="syncStatus" title="Click to set OneDrive sync folder">☁️ Not synced</div>
+    <button class="btn-nav" onclick="setDataFolder()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Set OneDrive folder to sync deals across devices">Set Sync Folder</button>
+    <div class="folder-status unset" id="folderStatus" title="Click to set your Documents folder">📁 No folder set</div>
+    <button class="btn-nav btn-folder" onclick="setDocsFolder()">Set Docs Folder</button>
+    <button class="btn-nav btn-sync" id="btnSync" onclick="syncDocsFolder()" title="Scan Documents folder and sync all attachments" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">🔄 Sync Docs</button>
+    <div class="navbar-date" id="navDate"></div>
+    <button class="btn-nav" onclick="openReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Weekly pipeline report">📋 Report</button>
+    <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
+  </div>
+</nav>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<!-- EDIT/ADD MODAL -->
+<div class="overlay" id="editOverlay" onclick="overlayClick(event,'editOverlay')">
+  <div class="modal">
+    <div class="modal-header"><h2 id="editTitle">Add Deal</h2><button class="modal-close" onclick="closeOverlay('editOverlay')">✕</button></div>
+    <div class="modal-body">
+      <div id="analyzeBar" style="display:none;margin-bottom:12px;">
+        <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="font-size:12px;color:#1D4ED8;">📄 <strong>Contract attached</strong> — auto-fill the form from this document?</div>
+          <button class="btn btn-primary" id="btnAnalyze" onclick="analyzeContract()" style="font-size:11px;padding:6px 14px;white-space:nowrap;">🔍 Analyze &amp; Fill</button>
+        </div>
+        <div id="analyzeResult" style="display:none;margin-top:8px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:8px 12px;font-size:11px;color:#166534;"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-label">Property Address</label><input class="form-input" id="f_address" placeholder="e.g. 123 Main St, Palm Coast, FL 32137"/></div>
+        <div class="form-group"><label class="form-label">Parcel ID</label><input class="form-input" id="f_parcel"/></div>
+        <div class="form-group"><label class="form-label">Purchase Price ($)</label><input class="form-input" id="f_amount" type="number"/></div>
+        <div class="form-group">
+          <label class="form-label">Assigned SPV</label>
+          <select class="form-select" id="f_spv" onchange="toggleCustomSpv(this)">
+            <option value="">— Select SPV —</option>
+            <option>Estela Living LLC</option><option>Estela Specs 1 LLC</option><option>Estela Specs 2 LLC</option>
+            <option>Estela Specs 6 LLC</option><option>Estela Specs 7 LLC</option><option>Estela Specs 9 LLC</option>
+            <option value="__custom__">Other…</option>
+          </select>
+          <input class="form-input" id="f_spv_custom" placeholder="Custom SPV name" style="display:none;margin-top:4px;"/>
+        </div>
+        <div class="form-group"><label class="form-label">Stage</label>
+          <select class="form-select" id="f_stage">
+            <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Close Date</label><input class="form-input" id="f_close" type="date"/></div>
+        <hr class="form-divider"/>
+        <div class="form-group"><label class="form-label">Escrow Due Date</label><input class="form-input" id="f_escrow" type="date"/></div>
+        <div class="form-group"><label class="form-label">Escrow Status</label>
+          <select class="form-select" id="f_escrowPaid"><option value="false">Pending</option><option value="true">Paid ✓</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">DD Due Date</label><input class="form-input" id="f_dd" type="date"/></div>
+        <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f_notes"></textarea></div>
+      </div>
+      <!-- ATTACHMENTS -->
+      <div class="attach-section">
+        <div class="attach-header">
+          <div><div class="attach-title">📎 Documents</div><div class="attach-subtitle" id="attachSubtitle">Files saved to Documents/[Deal Name]/ folder</div></div>
+          <button class="btn-attach" onclick="attachFile()" id="btnAttach">+ Attach File</button>
+        </div>
+        <div id="attachFolderHint"></div>
+        <div class="attach-drop" id="attachDrop" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+          📁 Drag &amp; drop files here — they'll be saved automatically to the deal's folder
+        </div>
+        <div class="attach-list" id="attachList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('editOverlay')">Cancel</button>
+      <button class="btn btn-danger" id="btnDelete" onclick="confirmDelete()" style="display:none;font-size:11px;padding:8px 12px;">🗑 Delete</button>
+      <button class="btn btn-primary" onclick="saveDeal()">Save Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="detailOverlay" onclick="overlayClick(event,'detailOverlay')">
+  <div class="modal">
+    <div class="modal-header"><h2 id="dTitle"></h2><button class="modal-close" onclick="closeOverlay('detailOverlay')">✕</button></div>
+    <div class="modal-body" id="dBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('detailOverlay')">Close</button>
+      <button class="btn btn-primary" id="dEditBtn">✏️ Edit Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- WEEKLY REPORT -->
+<div class="overlay" id="reportOverlay" onclick="overlayClick(event,'reportOverlay')">
+  <div class="modal report-modal">
+    <div class="modal-header"><h2>📋 Weekly Pipeline Report</h2><button class="modal-close" onclick="closeOverlay('reportOverlay')">✕</button></div>
+    <div class="modal-body" id="reportBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('reportOverlay')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal confirm-modal">
+    <div class="modal-header"><h2>Confirm Delete</h2><button class="modal-close" onclick="closeOverlay('confirmOverlay')">✕</button></div>
+    <div class="confirm-body"><div class="confirm-icon">🗑️</div><strong id="confirmName"></strong><p>This will permanently remove the deal and all document references.</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('confirmOverlay')">Cancel</button>
+      <button class="btn btn-danger" onclick="deleteDealConfirmed()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const _now = new Date(); const TODAY = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate());
+const LS_KEY = 'estelaDeals_v3';
+const IDB_DB = 'estelaFS'; const IDB_STORE = 'handles';
+const STAGES = [
+  {key:'Offer Letter',          cls:'offer',  hdr:'sh-offer',  badge:'background:#DBEAFE;color:#1D4ED8'},
+  {key:'Under Contract (Escrow)',cls:'escrow', hdr:'sh-escrow', badge:'background:#FEF3C7;color:#92400E'},
+  {key:'Due Diligences',        cls:'dd',     hdr:'sh-dd',     badge:'background:#FEE2E2;color:#991B1B'},
+  {key:'Permitting',            cls:'permit', hdr:'sh-permit', badge:'background:#DCFCE7;color:#166534'},
+  {key:'Closed / Purchased',    cls:'closed', hdr:'sh-closed', badge:'background:#CCFBF1;color:#0F766E'},
+  {key:'Cancelled',             cls:'cancelled',hdr:'sh-cancelled',badge:'background:#F3F4F6;color:#6B7280'},
+];
+const SPV_LIST = ['Estela Living LLC','Estela Specs 1 LLC','Estela Specs 2 LLC','Estela Specs 6 LLC','Estela Specs 7 LLC','Estela Specs 9 LLC'];
+const DEFAULTS = [
+  {id:1,stage:'Offer Letter',address:'00 SW 39th Ter (3507-008-022), Ocala, FL 34476',parcel:'3507-008-022',amount:58000,spv:'Estela Living LLC',close:'2026-03-31',escrow:'',escrowPaid:false,dd:'',notes:'Closing date tomorrow!',attachments:[]},
+  {id:3,stage:'Offer Letter',address:'00 SW 111th Pl (3579-003-056), Ocala, FL 34476',parcel:'3579-003-056',amount:75000,spv:'Estela Specs 9 LLC',close:'2026-04-21',escrow:'',escrowPaid:false,dd:'',notes:'Awaiting seller signatures.',attachments:[]},
+  {id:4,stage:'Under Contract (Escrow)',address:'17 Bonnie Ln, Palm Coast, FL 32137',parcel:'07-11-31-7017-00030-0190',amount:70500,spv:'Estela Specs 2 LLC',close:'2026-04-17',escrow:'2026-03-30',escrowPaid:false,dd:'2026-03-30',notes:'Escrow & DD due today.',attachments:[]},
+  {id:5,stage:'Under Contract (Escrow)',address:'19 Bonnie Ln, Palm Coast, FL 32137',parcel:'07-11-31-7017-00030-0180',amount:70500,spv:'Estela Specs 1 LLC',close:'2026-04-17',escrow:'2026-03-26',escrowPaid:false,dd:'2026-03-30',notes:'Escrow past due. DD expires today.',attachments:[]},
+  {id:6,stage:'Under Contract (Escrow)',address:'21 Bonnie Ln, Palm Coast, FL 32137',parcel:'07-11-31-7017-00030-0170',amount:70500,spv:'Estela Specs 7 LLC',close:'2026-04-17',escrow:'2026-03-26',escrowPaid:false,dd:'2026-03-30',notes:'Escrow past due. DD expires today.',attachments:[]},
+  {id:7,stage:'Under Contract (Escrow)',address:'47 Louisiana Dr #11, Palm Coast, FL 32137',parcel:'07-11-31-7037-01060-0110',amount:71500,spv:'Estela Specs 2 LLC',close:'2026-04-24',escrow:'2026-03-28',escrowPaid:false,dd:'2026-04-05',notes:'Escrow past due.',attachments:[]},
+  {id:8,stage:'Due Diligences',address:'0 SW 107th ST (3506-017-028), Ocala, FL 34476',parcel:'3506-017-028',amount:66500,spv:'Estela Specs 1 LLC',close:'2026-04-16',escrow:'2026-03-25',escrowPaid:true,dd:'2026-03-29',notes:'DD period expired.',attachments:[]},
+  {id:9,stage:'Due Diligences',address:'98 Lee Dr, Palm Coast, FL 32137',parcel:'07-11-31-7037-01440-0190',amount:73000,spv:'Estela Specs 6 LLC',close:'2026-04-30',escrow:'2026-03-27',escrowPaid:true,dd:'2026-04-03',notes:'',attachments:[]},
+  {id:10,stage:'Permitting',address:'0 SW 110th ST (3579-002-029), Ocala, FL 34476',parcel:'3579-002-029',amount:74900,spv:'Estela Specs 9 LLC',close:'2026-04-02',escrow:'2026-03-18',escrowPaid:true,dd:'',notes:'Closes in 3 days!',attachments:[]},
+  {id:11,stage:'Permitting',address:'2 Wateing Pl, Palm Coast, FL 32164',parcel:'07-11-31-7019-00230-0060',amount:69000,spv:'Estela Specs 9 LLC',close:'2026-04-03',escrow:'2026-03-20',escrowPaid:true,dd:'',notes:'',attachments:[]},
+  {id:12,stage:'Permitting',address:'56 Barkley Ln, Palm Coast, FL 32137',parcel:'07-11-31-7012-00180-0590',amount:77000,spv:'Estela Specs 9 LLC',close:'2026-04-03',escrow:'2026-03-11',escrowPaid:true,dd:'',notes:'',attachments:[]},
+  {id:13,stage:'Permitting',address:'8 Lewisdale Pl, Palm Coast, FL 32137',parcel:'07-11-31-7037-01190-0020',amount:76000,spv:'Estela Living LLC',close:'2026-04-07',escrow:'2026-03-11',escrowPaid:true,dd:'',notes:'',attachments:[]},
+  {id:14,stage:'Permitting',address:'3 Lansing Ln, Palm Coast, FL 32137',parcel:'07-11-31-7037-00490-0020',amount:71000,spv:'Estela Specs 9 LLC',close:'2026-04-10',escrow:'2026-03-18',escrowPaid:true,dd:'',notes:'',attachments:[]},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let deals = loadDeals(), activeFilter = 'All', editingId = null, pendingAttachments = [];
+let nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+let docsFolderHandle = null;
+let dataFolderHandle = null;
+
+function loadDeals(){try{const s=localStorage.getItem(LS_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
+function saveDeals(){
+  localStorage.setItem(LS_KEY,JSON.stringify(deals));
+  if(dataFolderHandle){
+    dataFolderHandle.getFileHandle('deals_data.json',{create:true}).then(fh=>
+      fh.createWritable().then(w=>w.write(JSON.stringify(deals,null,2)).then(()=>w.close()))
+    ).then(()=>updateSyncStatus('saved')).catch(()=>updateSyncStatus('error'));
+  }
+}
+function updateSyncStatus(state){
+  const el=document.getElementById('syncStatus');
+  if(!el)return;
+  if(state==='saved'){el.textContent='☁️ Synced';el.className='folder-status';}
+  else if(state==='loaded'){el.textContent='☁️ Synced';el.className='folder-status';}
+  else if(state==='error'){el.textContent='⚠️ Sync error';el.className='folder-status unset';}
+  else if(state==='set'){el.textContent='☁️ Synced';el.className='folder-status';}
+}
+async function setDataFolder(){
+  if(!window.showDirectoryPicker){showToast('Use Chrome or Edge for sync.','red');return;}
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite',startIn:'documents'});
+    dataFolderHandle=h;
+    await idbSet('dataFolder',h);
+    updateSyncStatus('set');
+    showToast('Sync folder set: '+h.name+'. Loading data…','green');
+    await readDealsFromFile();
+  }catch(e){if(e.name!=='AbortError')showToast('Could not set sync folder.','red');}
+}
+async function loadDataFolder(){
+  try{
+    const h=await idbGet('dataFolder');
+    if(!h)return;
+    const perm=await h.queryPermission({mode:'readwrite'});
+    if(perm==='granted'){dataFolderHandle=h;updateSyncStatus('loaded');await readDealsFromFile();return;}
+    const req=await h.requestPermission({mode:'readwrite'});
+    if(req==='granted'){dataFolderHandle=h;updateSyncStatus('loaded');await readDealsFromFile();}
+  }catch(e){}
+}
+async function readDealsFromFile(){
+  if(!dataFolderHandle)return;
+  try{
+    const fh=await dataFolderHandle.getFileHandle('deals_data.json');
+    const file=await fh.getFile();
+    const text=await file.text();
+    const parsed=JSON.parse(text);
+    if(Array.isArray(parsed)&&parsed.length>0){
+      deals=parsed;
+      localStorage.setItem(LS_KEY,JSON.stringify(deals));
+      mergeNewDeals();
+      applyDealUpdates();
+      (function dedupByParcel(){
+        const parcelToIds={};
+        deals.forEach(d=>{if(d.parcel){parcelToIds[d.parcel]=(parcelToIds[d.parcel]||[]).concat(d.id);}});
+        const toRemove=[];
+        Object.values(parcelToIds).forEach(ids=>{if(ids.length>1){const sorted=ids.slice().sort((a,b)=>a-b);toRemove.push(...sorted.slice(1));}});
+        if(toRemove.length){deals=deals.filter(d=>!toRemove.includes(d.id));saveDeals();}
+      })();
+      render();
+      showToast('Deals loaded from OneDrive ✅','green');
+    }
+  }catch(e){/* file doesn't exist yet, will be created on first save */}
+}
+
+// ── INDEXEDDB for folder handle ───────────────────────────────────────────────
+function openIDB(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_DB,1);r.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE);r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e);});}
+async function idbSet(key,val){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(val,key);tx.oncomplete=res;tx.onerror=rej;});}
+async function idbGet(key){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(key);r.onsuccess=()=>res(r.result);r.onerror=rej;});}
+
+async function loadFolderHandle(){
+  try{
+    const h=await idbGet('docsFolder');
+    if(h){
+      const perm=await h.queryPermission({mode:'readwrite'});
+      if(perm==='granted'){docsFolderHandle=h;updateFolderStatus(h.name);return;}
+      const req=await h.requestPermission({mode:'readwrite'});
+      if(req==='granted'){docsFolderHandle=h;updateFolderStatus(h.name);}
+    }
+  }catch(e){}
+}
+
+async function setDocsFolder(){
+  if(!window.showDirectoryPicker){showToast('Your browser doesn\'t support this. Use Chrome or Edge.','red');return;}
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite',startIn:'documents'});
+    docsFolderHandle=h;
+    await idbSet('docsFolder',h);
+    updateFolderStatus(h.name);
+    showToast('Documents folder set: '+h.name,'green');
+  }catch(e){if(e.name!=='AbortError')showToast('Could not set folder.','red');}
+}
+
+function updateFolderStatus(name){
+  const el=document.getElementById('folderStatus');
+  if(el){el.textContent='📁 '+name;el.className='folder-status';}
+  const btn=document.getElementById('btnSync');
+  if(btn)btn.style.display='inline-block';
+}
+
+async function syncDocsFolder(){
+  if(!docsFolderHandle){showToast('Set your Documents folder first.','red');return;}
+  const btn=document.getElementById('btnSync');
+  if(btn){btn.textContent='⏳ Syncing…';btn.disabled=true;}
+  let totalFiles=0,totalDeals=0;
+  try{
+    for(const deal of deals){
+      const folderName=sanitize(deal.address.split(',')[0]);
+      try{
+        const dealDir=await docsFolderHandle.getDirectoryHandle(folderName);
+        const found=[];
+        for await(const entry of dealDir.values()){
+          if(entry.kind==='file'){
+            const file=await entry.getFile();
+            // Only add if not already tracked
+            const alreadyTracked=(deal.attachments||[]).some(a=>a.name===entry.name&&a.folder===folderName);
+            if(!alreadyTracked){
+              found.push({name:entry.name,folder:folderName,size:file.size,savedToFolder:true});
+            }
+          }
+        }
+        if(found.length){
+          deal.attachments=[...(deal.attachments||[]),...found];
+          totalFiles+=found.length;
+          totalDeals++;
+        }
+      }catch(e){/* folder doesn't exist yet for this deal, skip */}
+    }
+    saveDeals();
+    render();
+    showToast(totalFiles>0?`Synced ${totalFiles} file(s) across ${totalDeals} deal(s) ✅`:'All files already up to date ✅','green');
+  }catch(e){
+    showToast('Sync error: '+e.message,'red');
+  }finally{
+    if(btn){btn.textContent='🔄 Sync Docs';btn.disabled=false;}
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function pd(s){if(!s)return null;const[y,m,d]=s.split('-');return new Date(+y,+m-1,+d);}
+function fd(s){if(!s)return '—';return pd(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function fm(n){return n?'$'+Number(n).toLocaleString():'—';}
+function diff(s){const d=pd(s);if(!d)return null;return Math.round((d-TODAY)/86400000);}
+function sanitize(s){return s.replace(/[<>:"/\\|?*]/g,'').replace(/\s+/g,' ').trim().substring(0,60);}
+function fileIcon(n){if(!n)return'📄';const e=n.split('.').pop().toLowerCase();if(e==='pdf')return'📕';if(['doc','docx'].includes(e))return'📘';if(['jpg','jpeg','png'].includes(e))return'🖼️';return'📄';}
+function fmtSize(b){if(!b)return'';if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB';}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.className='toast',3000);}
+
+function datePill(s,paid=false){
+  if(!s)return'<span class="pill pill-na">Not set</span>';
+  if(paid)return`<span class="pill pill-paid">✓ Paid &nbsp;${fd(s)}</span>`;
+  const d=diff(s);
+  if(d<0)return`<span class="pill pill-alert">⚠ ${fd(s)} (${Math.abs(d)}d overdue)</span>`;
+  if(d===0)return`<span class="pill pill-warn">⚡ Due Today</span>`;
+  if(d<=3)return`<span class="pill pill-warn">${fd(s)} (${d}d)</span>`;
+  return`<span class="pill pill-ok">${fd(s)}</span>`;
+}
+function closePill(s){
+  if(!s)return'<span class="pill pill-na">—</span>';
+  const d=diff(s);
+  if(d<0)return`<span class="pill pill-alert">${fd(s)}</span>`;
+  if(d<=7)return`<span class="pill pill-warn">${fd(s)} (${d}d)</span>`;
+  return`<span class="pill pill-blue">${fd(s)}</span>`;
+}
+function hasAlert(d){
+  if(!d.escrowPaid&&d.escrow&&diff(d.escrow)<=0)return true;
+  if(d.dd&&diff(d.dd)<=0)return true;
+  if(d.close&&diff(d.close)>=0&&diff(d.close)<=3)return true;
+  return false;
+}
+
+// ── FILE SAVING ───────────────────────────────────────────────────────────────
+async function saveFileToFolder(dealAddress, file){
+  if(!docsFolderHandle) return null;
+  try{
+    const folderName = sanitize(dealAddress.split(',')[0]);
+    const dealDir = await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
+    const fh = await dealDir.getFileHandle(file.name,{create:true});
+    const writable = await fh.createWritable();
+    await writable.write(file);
+    await writable.close();
+    return {name:file.name, folder:folderName, size:file.size, savedToFolder:true};
+  }catch(e){
+    console.error(e);
+    return null;
+  }
+}
+
+async function openSavedFile(att){
+  if(!att.savedToFolder||!docsFolderHandle){showToast('Set your Documents folder first.','red');return;}
+  try{
+    const perm=await docsFolderHandle.requestPermission({mode:'read'});
+    if(perm!=='granted'){showToast('Permission denied.','red');return;}
+    const dealDir=await docsFolderHandle.getDirectoryHandle(att.folder);
+    const fh=await dealDir.getFileHandle(att.name);
+    const file=await fh.getFile();
+    const url=URL.createObjectURL(file);
+    window.open(url,'_blank');
+  }catch(e){showToast('Could not open file: '+att.name,'red');}
+}
+
+// ── ATTACH FILES ──────────────────────────────────────────────────────────────
+async function attachFile(){
+  if(!window.showOpenFilePicker){document.getElementById('attachFallback')&&document.getElementById('attachFallback').click();return;}
+  try{
+    const fhs=await window.showOpenFilePicker({multiple:true,types:[{description:'Documents',accept:{'application/pdf':['.pdf'],'application/msword':['.doc','.docx'],'image/*':['.jpg','.jpeg','.png']}}]});
+    for(const fh of fhs){const file=await fh.getFile();await processAttachFile(file);}
+  }catch(e){if(e.name!=='AbortError')showToast('Could not open file picker.','red');}
+}
+
+let pendingAnalysisFile = null;
+async function processAttachFile(file){
+  const dealAddress = document.getElementById('f_address').value.trim();
+  updateFolderHint(dealAddress);
+  // Show analyze bar for PDFs when adding a new deal (no editing ID)
+  if(!editingId && file.type==='application/pdf'){
+    pendingAnalysisFile=file;
+    const bar=document.getElementById('analyzeBar');
+    if(bar)bar.style.display='block';
+  }
+  if(docsFolderHandle&&dealAddress){
+    const att=await saveFileToFolder(dealAddress,file);
+    if(att){pendingAttachments.push(att);renderAttachList();showToast('Saved: '+file.name,'green');return;}
+  }
+  // Fallback: store reference only
+  const folderName = dealAddress ? sanitize(dealAddress.split(',')[0]) : 'Unknown';
+  pendingAttachments.push({name:file.name,folder:folderName,size:file.size,savedToFolder:false});
+  renderAttachList();
+  if(!docsFolderHandle) showToast('Tip: Set a Documents folder to auto-save files.');
+}
+
+function dragOver(e){e.preventDefault();document.getElementById('attachDrop').classList.add('dragover');}
+function dragLeave(){document.getElementById('attachDrop').classList.remove('dragover');}
+function dropFile(e){e.preventDefault();dragLeave();[...e.dataTransfer.files].forEach(f=>processAttachFile(f));}
+
+function renderAttachList(){
+  const el=document.getElementById('attachList');
+  if(!el)return;
+  el.innerHTML=pendingAttachments.map((a,i)=>`
+    <div class="attach-item">
+      <span class="attach-icon">${fileIcon(a.name)}</span>
+      <div class="attach-info">
+        <div class="attach-name">${a.name}</div>
+        <div class="attach-path">${a.savedToFolder?'✅ Saved to Documents/'+a.folder+'/':'⚠ Not yet saved to folder'}</div>
+      </div>
+      <span class="attach-size">${fmtSize(a.size)}</span>
+      ${a.savedToFolder?`<button class="attach-open" onclick="openPendingAtt(${i})">Open</button>`:''}
+      <button class="attach-del" onclick="removePendingAtt(${i})">✕</button>
+    </div>`).join('');
+}
+
+async function openPendingAtt(i){await openSavedFile(pendingAttachments[i]);}
+function removePendingAtt(i){pendingAttachments.splice(i,1);renderAttachList();}
+
+function updateFolderHint(address){
+  const hint=document.getElementById('attachFolderHint');
+  if(!hint)return;
+  if(!docsFolderHandle){
+    hint.innerHTML=`<div class="attach-folder-hint warn">⚠️ No Documents folder set. Click <strong>Set Docs Folder</strong> in the top bar to enable automatic file saving.</div>`;
+  } else if(address){
+    const folderName=sanitize(address.split(',')[0]);
+    hint.innerHTML=`<div class="attach-folder-hint">📂 Files will be saved to: <strong>Documents/${folderName}/</strong></div>`;
+  } else {
+    hint.innerHTML=`<div class="attach-folder-hint">📂 Files will be saved to: <strong>Documents/[Deal Name]/</strong> — enter address first</div>`;
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  const filtered=activeFilter==='All'?deals:deals.filter(d=>d.stage===activeFilter);
+  const total=deals.reduce((s,d)=>s+Number(d.amount),0);
+  const alertDeals=deals.filter(d=>d.stage!=='Cancelled'&&hasAlert(d));
+  const closingSoon=deals.filter(d=>d.stage!=='Cancelled'&&d.close&&diff(d.close)>=0&&diff(d.close)<=7);
+  const escrowPending=deals.filter(d=>d.stage!=='Cancelled'&&!d.escrowPaid&&d.escrow);
+
+  let html=`<div class="kpi-bar">
+    <div class="kpi-card"><div class="kpi-label">Active Deals</div><div class="kpi-value">${deals.length}</div><div class="kpi-sub">All stages</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Total Pipeline</div><div class="kpi-value">$${(total/1e6).toFixed(2)}M</div><div class="kpi-sub">${fm(filtered.reduce((s,d)=>s+Number(d.amount),0))} shown</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Needs Attention</div><div class="kpi-value">${alertDeals.length}</div><div class="kpi-sub">Active alerts</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Closing This Week</div><div class="kpi-value">${closingSoon.length}</div><div class="kpi-sub">Within 7 days</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Escrow Pending</div><div class="kpi-value">${escrowPending.length}</div><div class="kpi-sub">Outstanding</div></div>
+  </div>`;
+
+  if(alertDeals.length)html+=`<div class="alerts-bar"><div class="alert-strip"><span class="alert-title">🚨 Alerts:</span>${alertDeals.map(d=>`<span class="alert-item">${d.address.split(',')[0]}</span>`).join('<span class="alert-sep"> · </span>')}</div></div>`;
+
+  html+=`<div class="filter-bar"><span class="filter-label">Filter:</span>
+    <button class="filter-btn ${activeFilter==='All'?'active':''}" onclick="setFilter('All')">All (${deals.length})</button>
+    ${STAGES.map(s=>{const c=deals.filter(d=>d.stage===s.key).length;return`<button class="filter-btn ${activeFilter===s.key?'active':''}" onclick="setFilter('${s.key}')">${s.key} (${c})</button>`;}).join('')}
+  </div><div class="board">`;
+
+  STAGES.forEach(s=>{
+    const sd=filtered.filter(d=>d.stage===s.key);
+    const sv=sd.reduce((sum,d)=>sum+Number(d.amount),0);
+    html+=`<div class="stage-col"><div class="stage-header ${s.hdr}"><div><div class="stage-title">${s.key}</div><div class="stage-total">${fm(sv)}</div></div><div class="stage-badge">${sd.length}</div></div>
+    <div class="stage-body" data-stage="${s.key}" ondragover="colDragOver(event,this)" ondragleave="colDragLeave(this)" ondrop="colDrop(event,'${s.key}')">${sd.length?sd.map(d=>renderCard(d,s)).join(''):'<div class="empty-col">No deals</div>'}</div></div>`;
+  });
+  html+='</div>';
+  document.getElementById('app').innerHTML=html;
+}
+
+function renderCard(d,s){
+  const alert=hasAlert(d);
+  const ac=(d.attachments||[]).length;
+  return`<div class="deal-card ${s.cls}" draggable="true" ondragstart="cardDragStart(event,${d.id})" ondragend="cardDragEnd(event)" ${alert?'style="border-color:#FECACA"':''} onclick="openDetail(${d.id})">
+    <div class="card-actions">${ac?`<span class="attach-count">📎${ac}</span>`:''}<button class="card-btn" onclick="event.stopPropagation();openEdit(${d.id})">✏️</button></div>
+    ${d.notes?`<div class="card-alert-note">⚠ ${d.notes}</div>`:''}
+    <div class="card-address">${d.address}</div>
+    <div class="card-amount">${fm(d.amount)}</div>
+    <hr class="card-divider"/>
+    <div class="card-meta">
+      <div class="card-row"><span class="card-icon">🏢</span><span>${d.spv||'—'}</span></div>
+      <div class="card-row"><span class="card-icon">📅</span><span>Close: ${closePill(d.close)}</span></div>
+      ${d.escrow?`<div class="card-row"><span class="card-icon">💰</span><span>Escrow: ${datePill(d.escrow,d.escrowPaid)}</span></div>`:''}
+      ${d.dd?`<div class="card-row"><span class="card-icon">🔍</span><span>DD: ${datePill(d.dd)}</span></div>`:''}
+    </div>
+    <div class="card-checks">
+      <label class="card-check-label ${d.lotWalkthrough?'checked':''}" onclick="event.stopPropagation()"><input type="checkbox" ${d.lotWalkthrough?'checked':''} onchange="toggleCheck(event,${d.id},'lotWalkthrough')"> Lot Walkthrough</label>
+      <label class="card-check-label ${d.managerApproval?'checked':'not-approved'}" onclick="event.stopPropagation()"><input type="checkbox" ${d.managerApproval?'checked':''} onchange="toggleCheck(event,${d.id},'managerApproval')"> ${d.managerApproval?'Approved':'Not Approved'}</label>
+    </div></div>`;
+}
+
+// ── DETAIL ────────────────────────────────────────────────────────────────────
+function openDetail(id){
+  const d=deals.find(x=>x.id===id);if(!d)return;
+  const s=STAGES.find(x=>x.key===d.stage);
+  document.getElementById('dTitle').textContent=d.address;
+  const atts=d.attachments||[];
+  document.getElementById('dBody').innerHTML=`
+    <span class="stage-badge-pill" style="${s?s.badge:''}">${d.stage}</span>
+    <div class="detail-row"><div class="detail-lbl">Purchase Price</div><div class="detail-val" style="font-size:18px;color:var(--blue-dark)">${fm(d.amount)}</div></div>
+    <hr class="detail-divider"/>
+    <div class="detail-row"><div class="detail-lbl">Parcel ID</div><div class="detail-val">${d.parcel||'—'}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Assigned SPV</div><div class="detail-val">${d.spv||'—'}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Close Date</div><div class="detail-val">${closePill(d.close)}</div></div>
+    <hr class="detail-divider"/>
+    <div class="detail-row"><div class="detail-lbl">Escrow Due</div><div class="detail-val">${datePill(d.escrow,d.escrowPaid)}</div></div>
+    <div class="detail-row"><div class="detail-lbl">DD Due Date</div><div class="detail-val">${datePill(d.dd)}</div></div>
+    <hr class="detail-divider"/>
+    <div class="detail-row"><div class="detail-lbl">Lot Walkthrough</div><div class="detail-val"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.lotWalkthrough?'checked':''} onchange="toggleCheck(event,${d.id},'lotWalkthrough')"> <span style="color:${d.lotWalkthrough?'var(--green-dark)':'var(--text-light)'}">${d.lotWalkthrough?'Complete':'Pending'}</span></label></div></div>
+    <div class="detail-row"><div class="detail-lbl">Manager Approval</div><div class="detail-val"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.managerApproval?'checked':''} onchange="toggleCheck(event,${d.id},'managerApproval')"> <span style="color:${d.managerApproval?'var(--green-dark)':'var(--red-dark)'};font-weight:600;">${d.managerApproval?'Approved':'Not Approved'}</span></label></div></div>
+    ${d.notes?`<hr class="detail-divider"/><div class="detail-row"><div class="detail-lbl">Notes</div><div class="detail-val" style="color:var(--orange)">${d.notes}</div></div>`:''}
+    ${atts.length?`<hr class="detail-divider"/>
+    <div class="attach-title" style="font-size:12px;font-weight:700;margin-bottom:8px;">📎 Documents (${atts.length})</div>
+    <div class="attach-list">${atts.map((a,i)=>`
+      <div class="attach-item">
+        <span class="attach-icon">${fileIcon(a.name)}</span>
+        <div class="attach-info"><div class="attach-name">${a.name}</div><div class="attach-path">${a.savedToFolder?'Documents/'+a.folder+'/'+a.name:'Not saved to folder'}</div></div>
+        ${a.savedToFolder?`<button class="attach-open" onclick="openDetailAtt(${id},${i})">Open</button>`:''}
+      </div>`).join('')}</div>`:''}
+  `;
+  document.getElementById('dEditBtn').onclick=()=>{closeOverlay('detailOverlay');openEdit(id);};
+  document.getElementById('detailOverlay').classList.add('open');
+}
+async function openDetailAtt(did,i){const d=deals.find(x=>x.id===did);if(!d)return;await openSavedFile((d.attachments||[])[i]);}
+
+// ── EDIT / ADD ────────────────────────────────────────────────────────────────
+function openAddDeal(){
+  editingId=null;pendingAttachments=[];pendingAnalysisFile=null;
+  document.getElementById('editTitle').textContent='Add New Deal';
+  document.getElementById('btnDelete').style.display='none';
+  const bar=document.getElementById('analyzeBar');if(bar){bar.style.display='none';}
+  const res=document.getElementById('analyzeResult');if(res){res.style.display='none';}
+  clearForm();updateFolderHint('');renderAttachList();
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function openEdit(id){
+  const d=deals.find(x=>x.id===id);if(!d)return;
+  editingId=id;pendingAttachments=JSON.parse(JSON.stringify(d.attachments||[]));
+  document.getElementById('editTitle').textContent='Edit Deal';
+  document.getElementById('btnDelete').style.display='inline-block';
+  document.getElementById('f_address').value=d.address||'';
+  document.getElementById('f_parcel').value=d.parcel||'';
+  document.getElementById('f_amount').value=d.amount||'';
+  document.getElementById('f_close').value=d.close||'';
+  document.getElementById('f_escrow').value=d.escrow||'';
+  document.getElementById('f_escrowPaid').value=d.escrowPaid?'true':'false';
+  document.getElementById('f_dd').value=d.dd||'';
+  document.getElementById('f_notes').value=d.notes||'';
+  document.getElementById('f_stage').value=d.stage||'Offer Letter';
+  if(SPV_LIST.includes(d.spv)){document.getElementById('f_spv').value=d.spv;document.getElementById('f_spv_custom').style.display='none';}
+  else{document.getElementById('f_spv').value='__custom__';document.getElementById('f_spv_custom').style.display='block';document.getElementById('f_spv_custom').value=d.spv||'';}
+  updateFolderHint(d.address);renderAttachList();
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function clearForm(){
+  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';
+  document.getElementById('f_stage').value='Offer Letter';document.getElementById('f_spv_custom').style.display='none';
+}
+function toggleCustomSpv(el){document.getElementById('f_spv_custom').style.display=el.value==='__custom__'?'block':'none';}
+
+function saveDeal(){
+  const address=document.getElementById('f_address').value.trim();
+  if(!address){alert('Property address is required.');return;}
+  const spvEl=document.getElementById('f_spv').value;
+  const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
+  const existing=editingId?deals.find(d=>d.id===editingId):null;
+  const oldStage=existing?existing.stage:null;
+  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false};
+  if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
+  saveDeals();closeOverlay('editOverlay');render();showToast('Deal saved!','green');
+  if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
+}
+
+function confirmDelete(){const d=deals.find(x=>x.id===editingId);if(!d)return;document.getElementById('confirmName').textContent=d.address;document.getElementById('confirmOverlay').classList.add('open');}
+function deleteDealConfirmed(){deals=deals.filter(d=>d.id!==editingId);saveDeals();closeOverlay('confirmOverlay');closeOverlay('editOverlay');render();showToast('Deal deleted.');}
+
+function setFilter(f){activeFilter=f;render();}
+function closeOverlay(id){document.getElementById(id).classList.remove('open');}
+function overlayClick(e,id){if(e.target===document.getElementById(id))closeOverlay(id);}
+
+// ── CONTRACT ANALYZER ─────────────────────────────────────────────────────────
+async function analyzeContract(){
+  if(!pendingAnalysisFile){showToast('No PDF attached yet.','red');return;}
+  const btn=document.getElementById('btnAnalyze');
+  btn.textContent='⏳ Reading…';btn.disabled=true;
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const arrayBuffer=await pendingAnalysisFile.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+    // Collect all text strings across pages (keep individual items for flexible matching)
+    const allStrings=[];
+    for(let i=1;i<=Math.min(pdf.numPages,5);i++){
+      const page=await pdf.getPage(i);
+      const tc=await page.getTextContent();
+      tc.items.forEach(x=>{if(x.str&&x.str.trim())allStrings.push(x.str.trim());});
+    }
+    const filled=parseContractText(allStrings);
+    applyParsedFields(filled);
+  }catch(e){
+    showToast('Could not read PDF: '+e.message,'red');
+    console.error(e);
+  }finally{
+    btn.textContent='🔍 Analyze & Fill';btn.disabled=false;
+  }
+}
+
+function parseContractText(strings){
+  // Build multiple views of the text for flexible matching
+  const flat=strings.join(' ').replace(/\s+/g,' ');
+  const result={};
+
+  // ── SPV ── look for Estela entity name in any string
+  for(const s of strings){
+    const m=s.match(/\b(Estela\s+(?:Living|Specs\s*\d+)\s*LLC)\b/i);
+    if(m){result.spv=m[1].replace(/\s+/g,' ').replace(/Specs(\d)/i,'Specs $1').trim();break;}
+  }
+
+  // ── Parcel ID ── distinctive format, just scan all strings
+  for(const s of strings){
+    const m=s.match(/\b(\d{2}-\d{2}-\d{2}-\d{4}-\d{5}-\d{4})\b/)||s.match(/\b(\d{4}-\d{3}-\d{3})\b/);
+    if(m){result.parcel=m[1];break;}
+  }
+
+  // ── Address ── look for a string that contains a FL zip and street keywords
+  const streetTypes=/(Ln|Lane|Dr|Drive|St|Street|Ave|Avenue|Blvd|Pl|Place|Rd|Road|Ter|Terrace|Way|Ct|Court)\b/i;
+  const flZip=/\bFL\s*\d{5}\b/i;
+  for(const s of strings){
+    if(flZip.test(s)&&streetTypes.test(s)&&/\d/.test(s)){
+      result.address=s.replace(/\s+/g,' ').trim();break;
+    }
+  }
+  // Also check pairs of consecutive strings (address sometimes split across 2 items)
+  if(!result.address){
+    for(let i=0;i<strings.length-1;i++){
+      const combined=(strings[i]+' '+strings[i+1]).replace(/\s+/g,' ');
+      if(flZip.test(combined)&&streetTypes.test(combined)&&/\d/.test(combined)){
+        result.address=combined.trim();break;
+      }
+    }
+  }
+  // Ocala TBD/directional style: "TBD SW 111TH PL OCALA FL 34476"
+  if(!result.address){
+    const m=flat.match(/\b((?:TBD|\d+)\s+(?:SW|NW|SE|NE)\s+\d+\w*\s+(?:PL|ST|AVE|DR|RD|TER|WAY|CT)\b[^,]{0,30}(?:Ocala|OCALA)[^,]{0,20}FL\s*\d{5})/i);
+    if(m)result.address=m[1].replace(/\s+/g,' ').trim();
+  }
+
+  // ── Purchase Price ── scan for dollar amounts in lot-price range ($40k–$500k)
+  // Check individual strings first (e.g. "77,000.00" or "$77,500")
+  for(const s of strings){
+    const m=s.match(/^\$?\s*([\d]{2,3},[\d]{3}(?:\.\d{2})?)$/);
+    if(m){const v=parseFloat(m[1].replace(/,/g,''));if(v>=40000&&v<=500000){result.amount=v;break;}}
+  }
+  // Fallback: scan flat text for $ amounts in range
+  if(!result.amount){
+    const hits=[...flat.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g)];
+    for(const m of hits){const v=parseFloat(m[1].replace(/,/g,''));if(v>=40000&&v<=500000){result.amount=v;break;}}
+  }
+  // Last resort: any bare number in range
+  if(!result.amount){
+    const hits=[...flat.matchAll(/\b(\d{2,3},\d{3}(?:\.\d{2})?)\b/g)];
+    for(const m of hits){const v=parseFloat(m[1].replace(/,/g,''));if(v>=40000&&v<=500000){result.amount=v;break;}}
+  }
+
+  // ── Close Date ── look for closing-related date patterns
+  const closePhrases=['on or before','closing date','close on','closes on'];
+  // First try: find a string that IS a date near a close-phrase string
+  let foundCloseIdx=-1;
+  for(let i=0;i<strings.length;i++){
+    if(closePhrases.some(p=>strings[i].toLowerCase().includes(p))){foundCloseIdx=i;break;}
+  }
+  if(foundCloseIdx>=0){
+    // Look at next 5 strings for a date
+    for(let j=foundCloseIdx;j<=Math.min(foundCloseIdx+5,strings.length-1);j++){
+      const d=parseDate(strings[j]);if(d){result.close=d;break;}
+    }
+  }
+  // Fallback: scan flat text
+  if(!result.close){
+    const patterns=[
+      /(?:on or before|closing date[^:]*:)[^\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i,
+      /(?:on or before|closing date[^:]*:)[^A-Z]*([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i,
+      /(?:on or before|closing date)\s+([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i,
+    ];
+    for(const p of patterns){const m=flat.match(p);if(m){const d=parseDate(m[1]);if(d){result.close=d;break;}}}
+  }
+  // Last resort: pick the latest 202X date in the doc (usually the closing date)
+  if(!result.close){
+    const allDates=[...flat.matchAll(/\b(\d{1,2}\/\d{1,2}\/202\d)\b/g)].map(m=>parseDate(m[1])).filter(Boolean);
+    if(allDates.length){allDates.sort((a,b)=>a<b?1:-1);result.close=allDates[0];}
+  }
+
+  // ── Escrow deposit days ──
+  const escrowPatterns=[
+    /within\s+(\d+)\s+business\s+days/i,
+    /within\s+(\d+)\s+days/i,
+    /within\s+48\s+hours/i,
+  ];
+  for(const p of escrowPatterns){
+    const m=flat.match(p);
+    if(m){result.escrowDays=p.source.includes('48')?2:parseInt(m[1]);break;}
+  }
+
+  // ── Due Diligence days ──
+  const ddPatterns=[
+    /[Dd]ue\s+[Dd]iligence\s+(?:to last|period|Period)\s+(\d+)\s+days/i,
+    /[Dd]ue\s+[Dd]iligence[^.]{0,60}(\d+)\s+days/i,
+    /(\d+)[- ][Dd]ay\s+(?:feasibility|due diligence|inspection)/i,
+    /[Bb]uyer will have a\s+(\d+)\s*[Dd]ay\s+feasibility/i,
+    /[Dd]ue\s+[Dd]iligence\s+[Pp]eriod[^.]{0,30}(\d+)/i,
+  ];
+  for(const p of ddPatterns){const m=flat.match(p);if(m){result.ddDays=parseInt(m[1]);break;}}
+
+  return result;
+}
+
+function parseDate(s){
+  if(!s)return null;
+  s=s.trim();
+  // Try MM/DD/YYYY
+  let m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // Try Month D, YYYY or Month D YYYY
+  const months={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+  m=s.match(/([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})/);
+  if(m){const mo=months[m[1].toLowerCase()];if(mo)return`${m[3]}-${mo}-${m[2].padStart(2,'0')}`;}
+  return null;
+}
+
+function applyParsedFields(f){
+  const filled=[];
+  if(f.address){document.getElementById('f_address').value=f.address;filled.push('Address');updateFolderHint(f.address);}
+  if(f.parcel){document.getElementById('f_parcel').value=f.parcel;filled.push('Parcel ID');}
+  if(f.amount){document.getElementById('f_amount').value=f.amount;filled.push('Purchase Price');}
+  if(f.spv){
+    const sel=document.getElementById('f_spv');
+    let found=false;
+    for(const opt of sel.options){if(opt.value.toLowerCase()===f.spv.toLowerCase()){sel.value=opt.value;found=true;break;}}
+    if(!found){sel.value='__custom__';document.getElementById('f_spv_custom').value=f.spv;document.getElementById('f_spv_custom').style.display='block';}
+    filled.push('SPV');
+  }
+  if(f.close){document.getElementById('f_close').value=f.close;filled.push('Close Date');}
+
+  // Compute escrow due date from today + days
+  if(f.escrowDays){
+    const base=new Date();base.setDate(base.getDate()+f.escrowDays);
+    document.getElementById('f_escrow').value=base.toISOString().split('T')[0];
+    filled.push('Escrow Due');
+  }
+  // Compute DD due date from today + days
+  if(f.ddDays){
+    const base=new Date();base.setDate(base.getDate()+f.ddDays);
+    document.getElementById('f_dd').value=base.toISOString().split('T')[0];
+    filled.push('DD Deadline');
+  }
+  // Auto-set stage
+  document.getElementById('f_stage').value='Under Contract (Escrow)';
+
+  const allFields=['Address','Parcel ID','Purchase Price','SPV','Close Date','Escrow Due','DD Deadline'];
+  const missed=allFields.filter(x=>!filled.includes(x));
+  const res=document.getElementById('analyzeResult');
+  if(res){
+    res.style.display='block';
+    res.innerHTML=filled.length
+      ?`✅ Filled: <strong>${filled.join(', ')}</strong>${missed.length?' &nbsp;·&nbsp; ⚠️ Not found: '+missed.join(', '):''}. Review before saving.`
+      :`⚠️ Couldn't extract any fields — please fill in manually.`;
+  }
+  if(filled.length)showToast('Filled '+filled.length+' fields from contract','green');
+}
+
+// ── CHECKBOXES ────────────────────────────────────────────────────────────────
+function toggleCheck(e,id,field){
+  e.stopPropagation();
+  const d=deals.find(x=>x.id===id);if(!d)return;
+  d[field]=e.target.checked;
+  saveDeals();
+  // update label live in whichever view was clicked — no full re-render so scroll position is preserved
+  const lbl=e.target.closest('label');
+  if(lbl){
+    if(lbl.classList.contains('card-check-label')){
+      lbl.classList.toggle('checked',e.target.checked);
+      if(field==='managerApproval'){
+        lbl.classList.toggle('not-approved',!e.target.checked);
+        // update the text node (after the checkbox input)
+        const textNode=[...lbl.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());
+        if(textNode) textNode.textContent=' '+(e.target.checked?'Approved':'Not Approved');
+      }
+    } else {
+      const span=lbl.querySelector('span');
+      if(span){
+        if(field==='managerApproval'){
+          span.style.color=e.target.checked?'var(--green-dark)':'var(--red-dark)';
+          span.textContent=e.target.checked?'Approved':'Not Approved';
+        } else {
+          span.style.color=e.target.checked?'var(--green-dark)':'var(--text-light)';
+          span.textContent=e.target.checked?'Complete':'Pending';
+        }
+      }
+    }
+  }
+}
+
+// ── CANCEL FOLDER MOVE ───────────────────────────────────────────────────────
+async function moveFolderToCancelled(deal){
+  if(!docsFolderHandle)return;
+  const folderName=sanitize(deal.address.split(',')[0]);
+  let dealDir;
+  try{dealDir=await docsFolderHandle.getDirectoryHandle(folderName);}
+  catch(e){return;} // folder doesn't exist yet, nothing to move
+  try{
+    // Get or create Cancelled parent folder
+    const cancelledDir=await docsFolderHandle.getDirectoryHandle('Cancelled',{create:true});
+    // Get or create deal subfolder inside Cancelled/
+    const destDir=await cancelledDir.getDirectoryHandle(folderName,{create:true});
+    // Copy each file then delete from original
+    for await(const entry of dealDir.values()){
+      if(entry.kind==='file'){
+        const file=await entry.getFile();
+        const destFH=await destDir.getFileHandle(entry.name,{create:true});
+        const writable=await destFH.createWritable();
+        await writable.write(file);
+        await writable.close();
+        await dealDir.removeEntry(entry.name);
+      }
+    }
+    // Remove now-empty original folder
+    try{await docsFolderHandle.removeEntry(folderName);}catch(e){}
+    // Update attachment paths on the deal object
+    const d=deals.find(x=>x.id===deal.id);
+    if(d&&d.attachments){
+      d.attachments=d.attachments.map(a=>({...a,folder:'Cancelled/'+folderName}));
+      saveDeals();
+    }
+    showToast('📁 Folder moved to Cancelled/ ✓','green');
+  }catch(e){
+    console.error('moveFolderToCancelled:',e);
+    showToast('Could not move folder: '+e.message,'red');
+  }
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
+let dragId=null;
+function cardDragStart(e,id){
+  dragId=id;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{const el=e.target.closest('.deal-card');if(el)el.classList.add('dragging');},0);
+}
+function cardDragEnd(e){
+  dragId=null;
+  document.querySelectorAll('.deal-card.dragging').forEach(el=>el.classList.remove('dragging'));
+  document.querySelectorAll('.stage-body.drag-over').forEach(el=>el.classList.remove('drag-over'));
+}
+function colDragOver(e,col){e.preventDefault();e.dataTransfer.dropEffect='move';col.classList.add('drag-over');}
+function colDragLeave(col){col.classList.remove('drag-over');}
+function colDrop(e,stageName){
+  e.preventDefault();
+  document.querySelectorAll('.stage-body.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  if(dragId===null)return;
+  const deal=deals.find(d=>d.id===dragId);
+  if(!deal||deal.stage===stageName)return;
+  const oldStage=deal.stage;
+  deal.stage=stageName;
+  saveDeals();
+  render();
+  showToast(`Moved to ${stageName} ✓`,'green');
+  if(stageName==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
+}
+
+// ── WEEKLY REPORT ─────────────────────────────────────────────────────────────
+function openReport(){
+  document.getElementById('reportBody').innerHTML = buildReportHTML();
+  document.getElementById('reportOverlay').classList.add('open');
+}
+
+function buildReportHTML(){
+  const active = deals.filter(d => d.stage !== 'Cancelled');
+  const now = TODAY;
+  const dateStr = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Section 1 — Closings within 7 days
+  const closing = active
+    .filter(d => d.close && diff(d.close) >= 0 && diff(d.close) <= 7)
+    .sort((a,b) => pd(a.close) - pd(b.close));
+
+  // Section 2 — Escrow due within 7 days (unpaid only)
+  const escrow = active
+    .filter(d => !d.escrowPaid && d.escrow && diff(d.escrow) >= -30 && diff(d.escrow) <= 7)
+    .sort((a,b) => pd(a.escrow) - pd(b.escrow));
+
+  // Section 3 — DD expiring within 10 days (future only)
+  const dd = active
+    .filter(d => d.dd && diff(d.dd) >= 0 && diff(d.dd) <= 10)
+    .sort((a,b) => pd(a.dd) - pd(b.dd));
+
+  function daysLabel(s){
+    const d = diff(s);
+    if(d < 0) return `<span class="rt-alert">${Math.abs(d)}d overdue</span>`;
+    if(d === 0) return `<span class="rt-alert">Due Today</span>`;
+    if(d <= 2) return `<span class="rt-warn">${d}d</span>`;
+    return `<span class="rt-ok">${d}d</span>`;
+  }
+
+  function closingRow(d){
+    return `<tr>
+      <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
+      <td>${d.spv||'—'}</td>
+      <td>${d.stage}</td>
+      <td>${fd(d.close)} &nbsp;${daysLabel(d.close)}</td>
+      <td>${fm(d.amount)}</td>
+    </tr>`;
+  }
+
+  function escrowRow(d){
+    return `<tr>
+      <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
+      <td>${d.spv||'—'}</td>
+      <td>${fd(d.escrow)} &nbsp;${daysLabel(d.escrow)}</td>
+      <td>${fm(d.amount)}</td>
+    </tr>`;
+  }
+
+  function ddRow(d){
+    return `<tr>
+      <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
+      <td>${d.spv||'—'}</td>
+      <td>${fd(d.dd)} &nbsp;${daysLabel(d.dd)}</td>
+      <td>${fm(d.amount)}</td>
+    </tr>`;
+  }
+
+  return `
+    <div class="report-header-block">
+      <div class="report-title-block">
+        <div class="report-title">Estela Realty LLC — Pipeline Report</div>
+        <div class="report-subtitle">Generated ${dateStr}</div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="report-section-title">🗓 Closings in the Next 7 Days <span>${closing.length} deal${closing.length!==1?'s':''}</span></div>
+      ${closing.length ? `
+      <table class="report-table">
+        <thead><tr><th>Property</th><th>SPV</th><th>Stage</th><th>Close Date</th><th>Amount</th></tr></thead>
+        <tbody>${closing.map(closingRow).join('')}</tbody>
+      </table>` : '<div class="report-empty">No closings in the next 7 days</div>'}
+    </div>
+
+    <div class="report-section">
+      <div class="report-section-title">💰 Escrow Deposits Due in the Next 7 Days <span>${escrow.length} deal${escrow.length!==1?'s':''}</span></div>
+      ${escrow.length ? `
+      <table class="report-table">
+        <thead><tr><th>Property</th><th>SPV</th><th>Escrow Due</th><th>Amount</th></tr></thead>
+        <tbody>${escrow.map(escrowRow).join('')}</tbody>
+      </table>` : '<div class="report-empty">No escrow deposits due in the next 7 days</div>'}
+    </div>
+
+    <div class="report-section">
+      <div class="report-section-title">🔍 Due Diligence Expirations in the Next 10 Days <span>${dd.length} deal${dd.length!==1?'s':''}</span></div>
+      ${dd.length ? `
+      <table class="report-table">
+        <thead><tr><th>Property</th><th>SPV</th><th>DD Expires</th><th>Amount</th></tr></thead>
+        <tbody>${dd.map(ddRow).join('')}</tbody>
+      </table>` : '<div class="report-empty">No DD expirations in the next 10 days</div>'}
+    </div>
+  `;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function mergeNewDeals(){
+  const incoming=[
+    {id:15,stage:'Under Contract (Escrow)',address:'160 Laramie Dr, Palm Coast, FL 32137',parcel:'SEC 37 BL 55 LT 5',amount:77000,spv:'Estela Specs 2 LLC',close:'2026-04-29',escrow:'2026-04-07',escrowPaid:false,dd:'2026-04-10',notes:'Earnest money due Apr 7. DD expires Apr 10.',attachments:[]},
+    {id:17,stage:'Under Contract (Escrow)',address:'00 SW 41 Ave (3578-009-006), Ocala, FL 34476',parcel:'3578-009-006',amount:67500,spv:'Estela Specs 9 LLC',close:'2026-04-30',escrow:'2026-04-06',escrowPaid:false,dd:'2026-04-13',notes:'Escrow $1,000 due TODAY Apr 6. DD expires Apr 13. All American Land Title - Heather Walstrom hwalstrom@aalandtitle.com.',attachments:[]},
+    {id:16,stage:'Under Contract (Escrow)',address:'68 Lake Success Dr, Palm Coast, FL 32137',parcel:'SEC 37 BL 83 LT 3',amount:70000,spv:'Estela Specs 7 LLC',close:'2026-04-30',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-11',notes:'Escrow due Apr 8. DD expires Apr 11. Pioneer Title - Karen Alford.',attachments:[]},
+    {id:18,stage:'Under Contract (Escrow)',address:'00 SW 110th Ln (3579-003-017), Ocala, FL 34476',parcel:'3579-003-017',amount:75000,spv:'Estela Specs 1 LLC',close:'2026-04-28',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-13',notes:'Escrow $1,000 due Apr 8 (3 biz days from 4/3). DD expires Apr 13. MLS Title - Janet Diiiorio Janet@mlstitleocala.com 352-509-3044.',attachments:[]},
+    {id:19,stage:'Under Contract (Escrow)',address:'00 SW 41st Ave (3578-030-017), Ocala, FL 34476',parcel:'3578-030-017',amount:70000,spv:'Estela Specs 1 LLC',close:'2026-04-27',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-16',notes:'Assignment contract (2-parcel deal w/ 3579-003-081). Escrow $1,000 due Apr 8 (48 biz hrs from 4/6). DD expires Apr 16. Atlas Title - Molly.',attachments:[]},
+    {id:20,stage:'Under Contract (Escrow)',address:'00 SW 112th St (3579-003-081), Ocala, FL 34476',parcel:'3579-003-081',amount:70000,spv:'Estela Specs 1 LLC',close:'2026-04-27',escrow:'2026-04-08',escrowPaid:false,dd:'2026-04-16',notes:'Assignment contract (2-parcel deal w/ 3578-030-017). Escrow $1,000 due Apr 8 (48 biz hrs from 4/6). DD expires Apr 16. Atlas Title - Molly.',attachments:[]},
+    {id:21,stage:'Under Contract (Escrow)',address:'106 Ramblewood Dr, Palm Coast, FL 32164',parcel:'',amount:65000,spv:'Estela Specs 2 LLC',close:'2026-05-08',escrow:'2026-04-10',escrowPaid:false,dd:'2026-04-18',notes:'Assigned from Panhandle Property Solutions. Escrow $1,000 due Apr 10 (2 biz days from execution 4/8). DD expires Apr 18 (10 cal days). Baldwin Park Title.',attachments:[]},
+  ];
+  let changed=false;
+  incoming.forEach(nd=>{
+    const exists=deals.some(d=>d.address===nd.address||(nd.parcel&&nd.parcel===d.parcel));
+    if(!exists){deals.push(nd);changed=true;}
+  });
+  if(changed){nextId=Math.max(...deals.map(d=>d.id),0)+1;saveDeals();}
+}
+// applyDealUpdates uses versioned patches — each deal stores _patchedTo so patches only ever run once.
+// To add new corrections: bump PATCH_VERSION and add entries with v: PATCH_VERSION.
+const PATCH_VERSION = 2;
+function applyDealUpdates(){
+  const updates=[
+    // v1 — initial data corrections (stage, spv, dates, notes)
+    {v:1,parcel:'3579-003-056',patch:{stage:'Under Contract (Escrow)',escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11',notes:'Executed contract Apr 1. Escrow due Apr 4. DD expires Apr 11. Brick City Title.'}},
+    {v:1,parcel:'3506-017-028',patch:{spv:'Estela Specs 1 LLC'}},
+    {v:1,parcel:'3579-002-029',patch:{close:'2026-04-10'}},
+    {v:1,parcel:'07-11-31-7017-00030-0190',patch:{escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
+    {v:1,parcel:'07-11-31-7017-00030-0180',patch:{spv:'Estela Specs 2 LLC',escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
+    {v:1,parcel:'07-11-31-7017-00030-0170',patch:{escrow:'2026-03-28',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Mar 30.'}},
+    {v:1,parcel:'07-11-31-7037-01060-0110',patch:{escrow:'2026-03-30',escrowPaid:true,notes:'Escrow paid Apr 1. DD expires Apr 5.'}},
+    {v:1,parcel:'SEC 37 BL 55 LT 5',patch:{escrowPaid:false,notes:'Earnest money due Apr 7. DD expires Apr 10.'}},
+    {v:1,parcel:'SEC 37 BL 83 LT 3',patch:{escrowPaid:false,notes:'Escrow due Apr 8. DD expires Apr 11. Pioneer Title - Karen Alford.'}},
+    {v:1,parcel:'3507-008-022',patch:{stage:'Under Contract (Escrow)',spv:'Estela Specs 9 LLC',close:'2026-04-16',escrow:'2026-03-31',escrowPaid:false,dd:'2026-04-05',notes:'Escrow overdue (due Mar 31). DD expires Apr 5. Cathy Morrison Title 863-732-8485.'}},
+    // v2 — rename 0/00 addresses to include parcel ID
+    {v:2,parcel:'3507-008-022',patch:{address:'00 SW 39th Ter (3507-008-022), Ocala, FL 34476'}},
+    {v:2,parcel:'3579-003-056',patch:{address:'00 SW 111th Pl (3579-003-056), Ocala, FL 34476'}},
+    {v:2,parcel:'3506-017-028',patch:{address:'0 SW 107th ST (3506-017-028), Ocala, FL 34476'}},
+    {v:2,parcel:'3579-002-029',patch:{address:'0 SW 110th ST (3579-002-029), Ocala, FL 34476'}},
+    {v:2,parcel:'3579-003-017',patch:{address:'00 SW 110th Ln (3579-003-017), Ocala, FL 34476'}},
+    {v:2,parcel:'3579-003-081',patch:{address:'00 SW 112th St (3579-003-081), Ocala, FL 34476'}},
+    {v:2,parcel:'3578-009-006',patch:{address:'00 SW 41 Ave (3578-009-006), Ocala, FL 34476'}},
+    {v:2,parcel:'3578-030-017',patch:{address:'00 SW 41st Ave (3578-030-017), Ocala, FL 34476'}},
+  ];
+  let changed=false;
+  updates.forEach(u=>{
+    const i=deals.findIndex(d=>d.parcel===u.parcel);
+    if(i>-1 && (deals[i]._patchedTo||0) < u.v){
+      Object.assign(deals[i],u.patch);
+      deals[i]._patchedTo=Math.max(deals[i]._patchedTo||0, u.v);
+      changed=true;
+    }
+  });
+  // Mark all deals as fully patched so future loads never re-apply old patches
+  deals.forEach(d=>{if((d._patchedTo||0)<PATCH_VERSION){d._patchedTo=PATCH_VERSION;changed=true;}});
+  if(changed)saveDeals();
+}
+document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+mergeNewDeals();
+applyDealUpdates();
+// Remove duplicate parcel entries — keep the LOWEST id (original with accumulated data)
+(function dedupByParcel(){
+  const parcelToIds={};
+  deals.forEach(d=>{if(d.parcel){parcelToIds[d.parcel]=(parcelToIds[d.parcel]||[]).concat(d.id);}});
+  const toRemove=[];
+  Object.values(parcelToIds).forEach(ids=>{
+    if(ids.length>1){const sorted=ids.slice().sort((a,b)=>a-b);toRemove.push(...sorted.slice(1));}
+  });
+  if(toRemove.length){deals=deals.filter(d=>!toRemove.includes(d.id));saveDeals();}
+})();
+// Load docs folder + data sync folder, then render
+// readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
+Promise.all([loadFolderHandle(), loadDataFolder()]).then(()=>render());
+</script>
+</body>
+</html>
