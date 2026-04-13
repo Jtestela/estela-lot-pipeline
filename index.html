@@ -118,6 +118,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .attach-open{background:var(--blue-light);color:var(--blue-mid);border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0;}
 .attach-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;flex-shrink:0;}
 .attach-del:hover{color:var(--red-alert);}
+/* CATEGORY ZONES */
+.cat-zone{border:1.5px dashed var(--gray-border);border-radius:8px;margin-top:8px;overflow:hidden;background:#fff;transition:border-color .15s,background .15s;}
+.cat-zone.dragover{border-color:var(--blue-mid);border-style:solid;background:#EFF6FF;}
+.cat-zone-hd{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+.cat-zone-count{background:rgba(255,255,255,.55);border-radius:10px;padding:0 8px;font-size:10px;}
+.cat-zone-body{padding:6px 8px;display:flex;flex-direction:column;gap:5px;min-height:30px;}
+.cat-zone-empty{font-size:10.5px;color:var(--text-light);text-align:center;padding:6px 0;font-style:italic;}
+.cat-zone .attach-item{cursor:grab;}
+.cat-zone .attach-item:active{cursor:grabbing;}
 /* DETAIL */
 .detail-row{display:flex;margin-bottom:8px;font-size:13px;}
 .detail-lbl{width:150px;color:var(--text-light);font-weight:500;flex-shrink:0;}
@@ -220,13 +229,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
       <!-- ATTACHMENTS -->
       <div class="attach-section">
         <div class="attach-header">
-          <div><div class="attach-title">📎 Documents</div><div class="attach-subtitle" id="attachSubtitle">Files saved to Documents/[Deal Name]/ folder</div></div>
-          <button class="btn-attach" onclick="attachFile()" id="btnAttach">+ Attach File</button>
+          <div><div class="attach-title">📎 Documents</div><div class="attach-subtitle" id="attachSubtitle">Drop files into the category that fits — drag between categories to re-organize</div></div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select class="form-select" id="attachCatPick" onchange="pendingCategoryPick=this.value" style="font-size:11px;padding:5px 8px;">
+              ${''/* options injected by JS on modal open */}
+            </select>
+            <button class="btn-attach" onclick="attachFile()" id="btnAttach">+ Attach File</button>
+          </div>
         </div>
         <div id="attachFolderHint"></div>
-        <div class="attach-drop" id="attachDrop" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
-          📁 Drag &amp; drop files here — they'll be saved automatically to the deal's folder
-        </div>
         <div class="attach-list" id="attachList"></div>
       </div>
     </div>
@@ -301,6 +312,18 @@ const STAGES = [
   {key:'Cancelled',             cls:'cancelled',hdr:'sh-cancelled',badge:'background:#F3F4F6;color:#6B7280'},
 ];
 const SPV_LIST = ['Estela Living LLC','Estela Specs 1 LLC','Estela Specs 2 LLC','Estela Specs 6 LLC','Estela Specs 7 LLC','Estela Specs 9 LLC'];
+// Document categories — each deal folder gets these subfolders, files are organized into them
+const DOC_CATEGORIES = [
+  {key:'contract',  label:'Contract & Offer', folder:'01 Contract',       icon:'📄', color:'#DBEAFE', text:'#1D4ED8'},
+  {key:'title',     label:'Title & Legal',    folder:'02 Title',          icon:'🏛️', color:'#EDE9FE', text:'#5B21B6'},
+  {key:'dd',        label:'Due Diligence',    folder:'03 Due Diligence',  icon:'🔍', color:'#FEE2E2', text:'#991B1B'},
+  {key:'escrow',    label:'Escrow & Financial', folder:'04 Escrow',       icon:'💰', color:'#FEF3C7', text:'#92400E'},
+  {key:'permits',   label:'Permits & Survey', folder:'05 Permits',        icon:'📋', color:'#DCFCE7', text:'#166534'},
+  {key:'closing',   label:'Closing',          folder:'06 Closing',        icon:'🔑', color:'#CCFBF1', text:'#0F766E'},
+  {key:'other',     label:'Other',            folder:'99 Other',          icon:'📎', color:'#F3F4F6', text:'#6B7280'},
+];
+function catByKey(k){return DOC_CATEGORIES.find(c=>c.key===k)||DOC_CATEGORIES[DOC_CATEGORIES.length-1];}
+function attCat(a){return a.category||'other';}
 const DEFAULTS = [
   {id:1,stage:'Due Diligences',address:'00 SW 39th Ter (3507-008-022), Ocala, FL 34476',parcel:'3507-008-022',amount:58000,spv:'Estela Specs 9 LLC',close:'2026-04-16',escrow:'2026-03-31',escrowPaid:false,dd:'2026-04-05',notes:'Escrow overdue (due Mar 31). DD expires Apr 5. Cathy Morrison Title 863-732-8485.',attachments:[],lotWalkthrough:true,managerApproval:true,_patchedTo:2},
   {id:3,stage:'Due Diligences',address:'00 SW 111th Pl (3579-003-056), Ocala, FL 34476',parcel:'3579-003-056',amount:75000,spv:'Estela Specs 9 LLC',close:'2026-04-21',escrow:'2026-04-04',escrowPaid:false,dd:'2026-04-11',notes:'Executed contract Apr 1. Escrow due Apr 4. DD expires Apr 11. Brick City Title.',attachments:[],lotWalkthrough:true,managerApproval:true,_patchedTo:2},
@@ -444,18 +467,32 @@ async function syncDocsFolder(){
       try{
         const dealDir=await docsFolderHandle.getDirectoryHandle(folderName);
         const found=[];
+        const existing=(deal.attachments||[]);
+        // Map each known subfolder name -> category key
+        const folderToCat={}; DOC_CATEGORIES.forEach(c=>folderToCat[c.folder]=c.key);
         for await(const entry of dealDir.values()){
           if(entry.kind==='file'){
-            const file=await entry.getFile();
-            // Only add if not already tracked
-            const alreadyTracked=(deal.attachments||[]).some(a=>a.name===entry.name&&a.folder===folderName);
+            // Legacy: loose file directly in deal folder → treat as "other"
+            const alreadyTracked=existing.some(a=>a.name===entry.name&&a.folder===folderName&&(!a.category||a.category==='other'));
             if(!alreadyTracked){
-              found.push({name:entry.name,folder:folderName,size:file.size,savedToFolder:true});
+              const file=await entry.getFile();
+              found.push({name:entry.name,folder:folderName,category:'other',size:file.size,savedToFolder:true});
+            }
+          } else if(entry.kind==='directory' && folderToCat[entry.name]){
+            const catKey=folderToCat[entry.name];
+            for await(const sub of entry.values()){
+              if(sub.kind==='file'){
+                const alreadyTracked=existing.some(a=>a.name===sub.name&&a.folder===folderName&&a.category===catKey);
+                if(!alreadyTracked){
+                  const file=await sub.getFile();
+                  found.push({name:sub.name,folder:folderName,category:catKey,size:file.size,savedToFolder:true});
+                }
+              }
             }
           }
         }
         if(found.length){
-          deal.attachments=[...(deal.attachments||[]),...found];
+          deal.attachments=[...existing,...found];
           totalFiles+=found.length;
           totalDeals++;
         }
@@ -505,16 +542,18 @@ function hasAlert(d){
 }
 
 // ── FILE SAVING ───────────────────────────────────────────────────────────────
-async function saveFileToFolder(dealAddress, file){
+async function saveFileToFolder(dealAddress, file, categoryKey='other'){
   if(!docsFolderHandle) return null;
   try{
     const folderName = sanitize(dealAddress.split(',')[0]);
     const dealDir = await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
-    const fh = await dealDir.getFileHandle(file.name,{create:true});
+    const cat = catByKey(categoryKey);
+    const catDir = await dealDir.getDirectoryHandle(cat.folder,{create:true});
+    const fh = await catDir.getFileHandle(file.name,{create:true});
     const writable = await fh.createWritable();
     await writable.write(file);
     await writable.close();
-    return {name:file.name, folder:folderName, size:file.size, savedToFolder:true};
+    return {name:file.name, folder:folderName, category:cat.key, size:file.size, savedToFolder:true};
   }catch(e){
     console.error(e);
     return null;
@@ -525,8 +564,23 @@ async function createDealFolder(dealAddress){
   if(!docsFolderHandle||!dealAddress) return;
   try{
     const folderName=sanitize(dealAddress.split(',')[0]);
-    await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
+    const dealDir=await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
+    // Create all category subfolders so the deal folder is organized from day one
+    for(const cat of DOC_CATEGORIES){
+      try{ await dealDir.getDirectoryHandle(cat.folder,{create:true}); }catch(e){}
+    }
   }catch(e){}
+}
+
+// Helper: resolve the directory handle (deal dir + optional category subfolder) for an attachment,
+// with fallback to legacy flat structure where files sat directly in the deal folder.
+async function resolveAttDir(att){
+  const dealDir = await docsFolderHandle.getDirectoryHandle(att.folder);
+  if(att.category){
+    const cat = catByKey(att.category);
+    try{ return {dir: await dealDir.getDirectoryHandle(cat.folder), isCat:true, dealDir, cat}; }catch(e){}
+  }
+  return {dir: dealDir, isCat:false, dealDir, cat:null};
 }
 
 async function openSavedFile(att){
@@ -534,12 +588,40 @@ async function openSavedFile(att){
   try{
     const perm=await docsFolderHandle.requestPermission({mode:'read'});
     if(perm!=='granted'){showToast('Permission denied.','red');return;}
-    const dealDir=await docsFolderHandle.getDirectoryHandle(att.folder);
-    const fh=await dealDir.getFileHandle(att.name);
+    const {dir} = await resolveAttDir(att);
+    const fh=await dir.getFileHandle(att.name);
     const file=await fh.getFile();
     const url=URL.createObjectURL(file);
     window.open(url,'_blank');
   }catch(e){showToast('Could not open file: '+att.name,'red');}
+}
+
+// Move an attachment file from its current category subfolder to a new one (physical move on disk)
+async function moveAttachmentCategory(att, newCategoryKey){
+  if(att.category===newCategoryKey) return true;
+  if(!att.savedToFolder||!docsFolderHandle){ att.category=newCategoryKey; return true; }
+  try{
+    const dealDir=await docsFolderHandle.getDirectoryHandle(att.folder);
+    const newCat=catByKey(newCategoryKey);
+    const newSub=await dealDir.getDirectoryHandle(newCat.folder,{create:true});
+    // Source: either legacy (directly in dealDir) or existing category subfolder
+    let srcDir=dealDir, srcIsCat=false;
+    if(att.category){
+      try{ srcDir=await dealDir.getDirectoryHandle(catByKey(att.category).folder); srcIsCat=true; }catch(e){ srcDir=dealDir; }
+    }
+    const srcFH=await srcDir.getFileHandle(att.name);
+    const file=await srcFH.getFile();
+    const destFH=await newSub.getFileHandle(att.name,{create:true});
+    const w=await destFH.createWritable();
+    await w.write(file); await w.close();
+    await srcDir.removeEntry(att.name);
+    att.category=newCategoryKey;
+    return true;
+  }catch(e){
+    console.error('moveAttachmentCategory:',e);
+    showToast('Could not move file: '+att.name,'red');
+    return false;
+  }
 }
 
 // ── ATTACH FILES ──────────────────────────────────────────────────────────────
@@ -552,7 +634,9 @@ async function attachFile(){
 }
 
 let pendingAnalysisFile = null;
-async function processAttachFile(file){
+let pendingCategoryPick = 'other'; // default category for files dropped on the generic zone / attached via picker
+async function processAttachFile(file, categoryKey){
+  const cat = catByKey(categoryKey||pendingCategoryPick||'other').key;
   const dealAddress = document.getElementById('f_address').value.trim();
   updateFolderHint(dealAddress);
   // Show analyze bar for PDFs when adding a new deal (no editing ID)
@@ -562,34 +646,70 @@ async function processAttachFile(file){
     if(bar)bar.style.display='block';
   }
   if(docsFolderHandle&&dealAddress){
-    const att=await saveFileToFolder(dealAddress,file);
-    if(att){pendingAttachments.push(att);renderAttachList();showToast('Saved: '+file.name,'green');return;}
+    const att=await saveFileToFolder(dealAddress,file,cat);
+    if(att){pendingAttachments.push(att);renderAttachList();showToast('Saved to '+catByKey(cat).label+': '+file.name,'green');return;}
   }
   // Fallback: store reference only
   const folderName = dealAddress ? sanitize(dealAddress.split(',')[0]) : 'Unknown';
-  pendingAttachments.push({name:file.name,folder:folderName,size:file.size,savedToFolder:false});
+  pendingAttachments.push({name:file.name,folder:folderName,category:cat,size:file.size,savedToFolder:false});
   renderAttachList();
   if(!docsFolderHandle) showToast('Tip: Set a Documents folder to auto-save files.');
 }
 
-function dragOver(e){e.preventDefault();document.getElementById('attachDrop').classList.add('dragover');}
-function dragLeave(){document.getElementById('attachDrop').classList.remove('dragover');}
-function dropFile(e){e.preventDefault();dragLeave();[...e.dataTransfer.files].forEach(f=>processAttachFile(f));}
+function dragOver(e){e.preventDefault();e.currentTarget.classList.add('dragover');}
+function dragLeave(e){(e.currentTarget||e).classList&&e.currentTarget.classList.remove('dragover');}
+function dropFile(e, categoryKey){
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  // Case 1: external files dropped from OS
+  if(e.dataTransfer.files && e.dataTransfer.files.length){
+    [...e.dataTransfer.files].forEach(f=>processAttachFile(f, categoryKey));
+    return;
+  }
+  // Case 2: internal drag — moving an existing pending attachment between categories
+  const idx = e.dataTransfer.getData('text/attach-idx');
+  if(idx!==''){
+    const i = parseInt(idx);
+    const att = pendingAttachments[i];
+    if(att && categoryKey && att.category!==categoryKey){
+      moveAttachmentCategory(att, categoryKey).then(ok=>{ if(ok){ renderAttachList(); showToast('Moved to '+catByKey(categoryKey).label,'green'); } });
+    }
+  }
+}
+function attachDragStart(e, i){
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/attach-idx', String(i));
+}
 
 function renderAttachList(){
   const el=document.getElementById('attachList');
   if(!el)return;
-  el.innerHTML=pendingAttachments.map((a,i)=>`
-    <div class="attach-item">
-      <span class="attach-icon">${fileIcon(a.name)}</span>
-      <div class="attach-info">
-        <div class="attach-name">${a.name}</div>
-        <div class="attach-path">${a.savedToFolder?'✅ Saved to Documents/'+a.folder+'/':'⚠ Not yet saved to folder'}</div>
+  // Group pending attachments by category
+  const grouped={}; DOC_CATEGORIES.forEach(c=>grouped[c.key]=[]);
+  pendingAttachments.forEach((a,i)=>{ grouped[attCat(a)] = grouped[attCat(a)]||[]; grouped[attCat(a)].push({a,i}); });
+  el.innerHTML = DOC_CATEGORIES.map(c=>{
+    const items = grouped[c.key]||[];
+    return `<div class="cat-zone" data-cat="${c.key}"
+         ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event,'${c.key}')">
+      <div class="cat-zone-hd" style="background:${c.color};color:${c.text}">
+        <span>${c.icon} ${c.label}</span>
+        <span class="cat-zone-count">${items.length}</span>
       </div>
-      <span class="attach-size">${fmtSize(a.size)}</span>
-      ${a.savedToFolder?`<button class="attach-open" onclick="openPendingAtt(${i})">Open</button>`:''}
-      <button class="attach-del" onclick="removePendingAtt(${i})">✕</button>
-    </div>`).join('');
+      <div class="cat-zone-body">
+        ${items.length ? items.map(({a,i})=>`
+          <div class="attach-item" draggable="true" ondragstart="attachDragStart(event,${i})">
+            <span class="attach-icon">${fileIcon(a.name)}</span>
+            <div class="attach-info">
+              <div class="attach-name">${a.name}</div>
+              <div class="attach-path">${a.savedToFolder?'✅ '+c.folder+'/':'⚠ Not saved'}</div>
+            </div>
+            <span class="attach-size">${fmtSize(a.size)}</span>
+            ${a.savedToFolder?`<button class="attach-open" onclick="openPendingAtt(${i})">Open</button>`:''}
+            <button class="attach-del" onclick="removePendingAtt(${i})" title="Remove">✕</button>
+          </div>`).join('') : `<div class="cat-zone-empty">Drop files here</div>`}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function openPendingAtt(i){await openSavedFile(pendingAttachments[i]);}
@@ -687,12 +807,20 @@ function openDetail(id){
     ${d.notes?`<hr class="detail-divider"/><div class="detail-row"><div class="detail-lbl">Notes</div><div class="detail-val" style="color:var(--orange)">${d.notes}</div></div>`:''}
     ${atts.length?`<hr class="detail-divider"/>
     <div class="attach-title" style="font-size:12px;font-weight:700;margin-bottom:8px;">📎 Documents (${atts.length})</div>
-    <div class="attach-list">${atts.map((a,i)=>`
-      <div class="attach-item">
-        <span class="attach-icon">${fileIcon(a.name)}</span>
-        <div class="attach-info"><div class="attach-name">${a.name}</div><div class="attach-path">${a.savedToFolder?'Documents/'+a.folder+'/'+a.name:'Not saved to folder'}</div></div>
-        ${a.savedToFolder?`<button class="attach-open" onclick="openDetailAtt(${id},${i})">Open</button>`:''}
-      </div>`).join('')}</div>`:''}
+    ${DOC_CATEGORIES.map(c=>{
+      const group = atts.map((a,i)=>({a,i})).filter(x=>attCat(x.a)===c.key);
+      if(!group.length) return '';
+      return `<div class="cat-zone">
+        <div class="cat-zone-hd" style="background:${c.color};color:${c.text}"><span>${c.icon} ${c.label}</span><span class="cat-zone-count">${group.length}</span></div>
+        <div class="cat-zone-body">
+          ${group.map(({a,i})=>`<div class="attach-item">
+            <span class="attach-icon">${fileIcon(a.name)}</span>
+            <div class="attach-info"><div class="attach-name">${a.name}</div><div class="attach-path">${a.savedToFolder?a.folder+'/'+c.folder+'/'+a.name:'Not saved'}</div></div>
+            ${a.savedToFolder?`<button class="attach-open" onclick="openDetailAtt(${id},${i})">Open</button>`:''}
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}`:''}
   `;
   document.getElementById('dEditBtn').onclick=()=>{closeOverlay('detailOverlay');openEdit(id);};
   document.getElementById('detailOverlay').classList.add('open');
@@ -700,13 +828,21 @@ function openDetail(id){
 async function openDetailAtt(did,i){const d=deals.find(x=>x.id===did);if(!d)return;await openSavedFile((d.attachments||[])[i]);}
 
 // ── EDIT / ADD ────────────────────────────────────────────────────────────────
+function populateCatPicker(){
+  const sel=document.getElementById('attachCatPick');
+  if(!sel||sel.options.length) return;
+  sel.innerHTML = DOC_CATEGORIES.map(c=>`<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
+  sel.value = pendingCategoryPick;
+}
 function openAddDeal(){
-  editingId=null;pendingAttachments=[];pendingAnalysisFile=null;
+  editingId=null;pendingAttachments=[];pendingAnalysisFile=null;pendingCategoryPick='contract';
   document.getElementById('editTitle').textContent='Add New Deal';
   document.getElementById('btnDelete').style.display='none';
   const bar=document.getElementById('analyzeBar');if(bar){bar.style.display='none';}
   const res=document.getElementById('analyzeResult');if(res){res.style.display='none';}
-  clearForm();updateFolderHint('');renderAttachList();
+  clearForm();updateFolderHint('');populateCatPicker();
+  const p=document.getElementById('attachCatPick'); if(p)p.value=pendingCategoryPick;
+  renderAttachList();
   document.getElementById('editOverlay').classList.add('open');
 }
 
@@ -726,7 +862,10 @@ function openEdit(id){
   document.getElementById('f_stage').value=d.stage||'Offer Letter';
   if(SPV_LIST.includes(d.spv)){document.getElementById('f_spv').value=d.spv;document.getElementById('f_spv_custom').style.display='none';}
   else{document.getElementById('f_spv').value='__custom__';document.getElementById('f_spv_custom').style.display='block';document.getElementById('f_spv_custom').value=d.spv||'';}
-  updateFolderHint(d.address);renderAttachList();
+  pendingCategoryPick='other';
+  updateFolderHint(d.address);populateCatPicker();
+  const p=document.getElementById('attachCatPick'); if(p)p.value=pendingCategoryPick;
+  renderAttachList();
   document.getElementById('editOverlay').classList.add('open');
 }
 
@@ -991,19 +1130,25 @@ async function moveFolderToCancelled(deal){
     const cancelledDir=await docsFolderHandle.getDirectoryHandle('Cancelled',{create:true});
     // Get or create deal subfolder inside Cancelled/
     const destDir=await cancelledDir.getDirectoryHandle(folderName,{create:true});
-    // Copy each file then delete from original
-    for await(const entry of dealDir.values()){
-      if(entry.kind==='file'){
-        const file=await entry.getFile();
-        const destFH=await destDir.getFileHandle(entry.name,{create:true});
-        const writable=await destFH.createWritable();
-        await writable.write(file);
-        await writable.close();
-        await dealDir.removeEntry(entry.name);
+    // Recursively copy files (preserving category subfolder structure), then delete originals
+    async function copyTree(srcDir, dstDir){
+      for await(const entry of srcDir.values()){
+        if(entry.kind==='file'){
+          const file=await entry.getFile();
+          const destFH=await dstDir.getFileHandle(entry.name,{create:true});
+          const w=await destFH.createWritable();
+          await w.write(file); await w.close();
+          await srcDir.removeEntry(entry.name);
+        } else if(entry.kind==='directory'){
+          const newDst=await dstDir.getDirectoryHandle(entry.name,{create:true});
+          await copyTree(entry,newDst);
+          try{ await srcDir.removeEntry(entry.name); }catch(e){}
+        }
       }
     }
+    await copyTree(dealDir,destDir);
     // Remove now-empty original folder
-    try{await docsFolderHandle.removeEntry(folderName);}catch(e){}
+    try{await docsFolderHandle.removeEntry(folderName,{recursive:true});}catch(e){}
     // Update attachment paths on the deal object
     const d=deals.find(x=>x.id===deal.id);
     if(d&&d.attachments){
