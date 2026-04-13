@@ -127,6 +127,22 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .cat-zone-empty{font-size:10.5px;color:var(--text-light);text-align:center;padding:6px 0;font-style:italic;}
 .cat-zone .attach-item{cursor:grab;}
 .cat-zone .attach-item:active{cursor:grabbing;}
+/* BACKUPS */
+.backup-intro{background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px;}
+.backup-intro.warn{background:#FFFBEB;border-color:#FDE68A;color:#92400E;}
+.backup-table{width:100%;border-collapse:collapse;font-size:12px;}
+.backup-table th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);text-align:left;padding:6px 8px;border-bottom:1.5px solid var(--gray-border);background:#F8FAFC;}
+.backup-table td{padding:8px;border-bottom:1px solid #F1F3F5;vertical-align:middle;}
+.backup-table tr:hover td{background:#FAFBFC;}
+.backup-reason{display:inline-block;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;}
+.backup-reason.daily{background:#DBEAFE;color:#1D4ED8;}
+.backup-reason.manual{background:#DCFCE7;color:#166534;}
+.backup-reason.pre-restore{background:#FEF3C7;color:#92400E;}
+.backup-reason.auto{background:#F3F4F6;color:#6B7280;}
+.backup-btn-restore{background:var(--green-dark);color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px;}
+.backup-btn-restore:hover{opacity:.85;}
+.backup-btn-dl{background:var(--blue-light);color:var(--blue-mid);border:none;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;}
+.backup-btn-dl:hover{opacity:.85;}
 /* DETAIL */
 .detail-row{display:flex;margin-bottom:8px;font-size:13px;}
 .detail-lbl{width:150px;color:var(--text-light);font-weight:500;flex-shrink:0;}
@@ -180,6 +196,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <button class="btn-nav btn-sync" id="btnSync" onclick="syncDocsFolder()" title="Scan Documents folder and sync all attachments" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">🔄 Sync Docs</button>
     <div class="navbar-date" id="navDate"></div>
     <button class="btn-nav" onclick="openReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Weekly pipeline report">📋 Report</button>
+    <button class="btn-nav" onclick="openBackups()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Snapshots & restore">💾 Backups</button>
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
   </div>
 </nav>
@@ -269,6 +286,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('reportOverlay')">Close</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- BACKUPS MODAL -->
+<div class="overlay" id="backupsOverlay" onclick="overlayClick(event,'backupsOverlay')">
+  <div class="modal" style="width:760px;">
+    <div class="modal-header"><h2>💾 Backups & Restore</h2><button class="modal-close" onclick="closeOverlay('backupsOverlay')">✕</button></div>
+    <div class="modal-body" id="backupsBody"><em>Loading…</em></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('backupsOverlay')">Close</button>
+      <button class="btn btn-primary" onclick="snapshotNow()">📸 Snapshot Now</button>
     </div>
   </div>
 </div>
@@ -432,6 +461,146 @@ async function loadDataFolder(){
     if(req==='granted'){dataFolderHandle=h;updateSyncStatus('loaded');await readDealsFromFile();}
   }catch(e){}
 }
+// ── AUTO-BACKUP SYSTEM ───────────────────────────────────────────────────────
+// Daily timestamped snapshots written to [syncFolder]/backups/.
+// Enables one-click recovery if anything goes wrong (data revert, bad save, etc.).
+const BACKUP_KEEP_COUNT = 30;    // rolling window — older ones get deleted
+const BACKUP_FOLDER     = 'backups';
+
+async function getBackupDir(createIfMissing=true){
+  if(!dataFolderHandle) return null;
+  try{ return await dataFolderHandle.getDirectoryHandle(BACKUP_FOLDER,{create:createIfMissing}); }
+  catch(e){ return null; }
+}
+
+function backupFilename(reason='auto'){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const stamp=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  return `backup_${stamp}_${reason}.json`;
+}
+
+async function snapshotDeals(reason='manual'){
+  const dir=await getBackupDir(true);
+  if(!dir){ return {ok:false, error:'No sync folder set'}; }
+  if(!deals || !deals.length){ return {ok:false, error:'No deals to back up'}; }
+  try{
+    const fname=backupFilename(reason);
+    const fh=await dir.getFileHandle(fname,{create:true});
+    const w=await fh.createWritable();
+    await w.write(JSON.stringify({
+      _backupAt: Date.now(),
+      _reason: reason,
+      _dealCount: deals.length,
+      deals: deals
+    }, null, 2));
+    await w.close();
+    return {ok:true, filename:fname};
+  }catch(e){
+    console.error('snapshotDeals:', e);
+    return {ok:false, error:e.message};
+  }
+}
+
+async function listBackups(){
+  const dir=await getBackupDir(false);
+  if(!dir) return [];
+  const out=[];
+  try{
+    for await(const entry of dir.values()){
+      if(entry.kind==='file' && entry.name.startsWith('backup_') && entry.name.endsWith('.json')){
+        try{
+          const file=await entry.getFile();
+          const text=await file.text();
+          const data=JSON.parse(text);
+          const deals=Array.isArray(data)?data:(data.deals||[]);
+          const total=deals.reduce((s,d)=>s+Number(d.amount||0),0);
+          out.push({
+            filename: entry.name,
+            backupAt: data._backupAt||file.lastModified,
+            reason: data._reason||'unknown',
+            dealCount: deals.length,
+            pipelineTotal: total,
+            size: file.size,
+            handle: entry
+          });
+        }catch(e){ /* skip malformed */ }
+      }
+    }
+  }catch(e){ console.error('listBackups:', e); }
+  out.sort((a,b)=>b.backupAt-a.backupAt);
+  return out;
+}
+
+async function restoreFromBackup(filename){
+  const dir=await getBackupDir(false);
+  if(!dir) return {ok:false, error:'No backups folder'};
+  try{
+    // Safety: snapshot current state BEFORE restoring, so the user can undo
+    await snapshotDeals('pre-restore');
+    const fh=await dir.getFileHandle(filename);
+    const file=await fh.getFile();
+    const data=JSON.parse(await file.text());
+    const loadedDeals=Array.isArray(data)?data:(data.deals||[]);
+    if(!loadedDeals.length) return {ok:false, error:'Backup is empty'};
+    deals=loadedDeals;
+    nextId=Math.max(...deals.map(d=>d.id),0)+1;
+    dealsFromDefaults=false;
+    const t=Date.now();
+    localStorage.setItem(LS_KEY,JSON.stringify(deals));
+    localStorage.setItem(LS_KEY+'_savedAt',String(t));
+    if(fbReady){
+      _pendingWrite=true;
+      updateSyncStatus('saving');
+      await fbRef.set(deals);
+      _pendingWrite=false;
+      localStorage.setItem(LS_KEY+'_fbSyncedAt',String(t));
+      updateSyncStatus('saved');
+    }
+    render();
+    return {ok:true, count:deals.length};
+  }catch(e){
+    console.error('restoreFromBackup:', e);
+    return {ok:false, error:e.message};
+  }
+}
+
+async function cleanupOldBackups(){
+  const list=await listBackups();
+  if(list.length<=BACKUP_KEEP_COUNT) return;
+  const dir=await getBackupDir(false);
+  if(!dir) return;
+  const toDelete=list.slice(BACKUP_KEEP_COUNT);
+  for(const b of toDelete){
+    try{ await dir.removeEntry(b.filename); }catch(e){}
+  }
+}
+
+async function performDailyBackupIfNeeded(){
+  if(!dataFolderHandle) return;
+  const list=await listBackups();
+  const today=new Date();
+  const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const hasToday=list.some(b=>b.filename.includes('_'+todayKey+'_'));
+  if(!hasToday){
+    const r=await snapshotDeals('daily');
+    if(r.ok){ console.log('[backup] Daily snapshot created:', r.filename); cleanupOldBackups(); }
+  }
+}
+
+async function downloadBackup(filename){
+  const dir=await getBackupDir(false);
+  if(!dir){ showToast('No backup folder','red'); return; }
+  try{
+    const fh=await dir.getFileHandle(filename);
+    const file=await fh.getFile();
+    const url=URL.createObjectURL(file);
+    const a=document.createElement('a');
+    a.href=url; a.download=filename; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){ showToast('Could not download: '+e.message,'red'); }
+}
+
 async function readDealsFromFile(){
   if(!dataFolderHandle)return;
   try{
@@ -1232,6 +1401,62 @@ function colDrop(e,stageName){
   if(stageName==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
 }
 
+// ── BACKUPS MODAL ─────────────────────────────────────────────────────────────
+async function openBackups(){
+  document.getElementById('backupsOverlay').classList.add('open');
+  await renderBackupsList();
+}
+async function renderBackupsList(){
+  const body=document.getElementById('backupsBody');
+  if(!dataFolderHandle){
+    body.innerHTML=`<div class="backup-intro warn">⚠️ <strong>No sync folder set.</strong> Click <strong>Set Sync Folder</strong> in the top bar and pick your OneDrive folder. Backups will be stored there under <code>backups/</code>.</div>`;
+    return;
+  }
+  body.innerHTML='<em>Loading backups…</em>';
+  const list=await listBackups();
+  const total=deals.reduce((s,d)=>s+Number(d.amount||0),0);
+  const hdr=`<div class="backup-intro">✅ Daily auto-backup active. <strong>${list.length}</strong> snapshot(s) stored · Keeping newest ${BACKUP_KEEP_COUNT} · Current state: ${deals.length} deals · $${(total/1e6).toFixed(2)}M pipeline</div>`;
+  if(!list.length){
+    body.innerHTML=hdr+`<div style="text-align:center;padding:20px;color:var(--text-light);font-size:13px;">No backups yet. Click <strong>📸 Snapshot Now</strong> below to create your first one.</div>`;
+    return;
+  }
+  const rows=list.map(b=>{
+    const d=new Date(b.backupAt);
+    const dateStr=d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    const reasonCls=b.reason.replace(/[^a-z-]/gi,'').toLowerCase();
+    return `<tr>
+      <td>${dateStr}</td>
+      <td><span class="backup-reason ${reasonCls}">${b.reason}</span></td>
+      <td>${b.dealCount}</td>
+      <td>$${(b.pipelineTotal/1e6).toFixed(2)}M</td>
+      <td style="text-align:right">
+        <button class="backup-btn-restore" onclick="confirmRestore('${b.filename.replace(/'/g,"\\'")}',${b.dealCount})">♻ Restore</button>
+        <button class="backup-btn-dl" onclick="downloadBackup('${b.filename.replace(/'/g,"\\'")}')">⬇ Download</button>
+      </td>
+    </tr>`;
+  }).join('');
+  body.innerHTML=hdr+`<table class="backup-table">
+    <thead><tr><th>Date</th><th>Type</th><th>Deals</th><th>Pipeline</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+async function snapshotNow(){
+  if(!dataFolderHandle){ showToast('Set your Sync Folder first.','red'); return; }
+  const r=await snapshotDeals('manual');
+  if(r.ok){ showToast('📸 Snapshot saved: '+r.filename,'green'); renderBackupsList(); }
+  else showToast('Snapshot failed: '+r.error,'red');
+}
+async function confirmRestore(filename, dealCount){
+  const ok=confirm(`Restore this backup?\n\nThis will:\n• Replace current ${deals.length} deals with ${dealCount} deals from the backup\n• Push to Firebase (all devices)\n• Create a safety snapshot first (pre-restore)\n\nContinue?`);
+  if(!ok) return;
+  const r=await restoreFromBackup(filename);
+  if(r.ok){
+    showToast(`✅ Restored ${r.count} deals from backup`,'green');
+    closeOverlay('backupsOverlay');
+  } else {
+    showToast('Restore failed: '+r.error,'red');
+  }
+}
+
 // ── WEEKLY REPORT ─────────────────────────────────────────────────────────────
 function openReport(){
   document.getElementById('reportBody').innerHTML = buildReportHTML();
@@ -1359,8 +1584,12 @@ fbRef.on('value', snapshot => {
     }
     const incoming = JSON.stringify(data);
     if(incoming !== JSON.stringify(deals)){
+      // 🛡 Safety snapshot BEFORE we let Firebase overwrite in-memory state.
+      // If this replacement turns out to be bad, user can restore from the Backups modal.
+      if(dataFolderHandle){ snapshotDeals('pre-fb-overwrite'); }
       deals = data;
       nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+      dealsFromDefaults = false;
       localStorage.setItem(LS_KEY, JSON.stringify(deals));
       render();
     }
@@ -1380,7 +1609,11 @@ fbRef.on('value', snapshot => {
   }
 });
 
-Promise.all([loadFolderHandle(), loadDataFolder()]).then(()=>render());
+Promise.all([loadFolderHandle(), loadDataFolder()]).then(()=>{
+  render();
+  // Once everything's loaded, run the daily backup check in the background
+  setTimeout(()=>performDailyBackupIfNeeded(), 3000);
+});
 </script>
 </body>
 </html>
