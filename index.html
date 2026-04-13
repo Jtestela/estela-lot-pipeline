@@ -354,11 +354,38 @@ let docsFolderHandle = null;
 let dataFolderHandle = null;
 let _pendingWrite = false;
 
-function loadDeals(){try{const s=localStorage.getItem(LS_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
+// Track whether the current `deals` came from hardcoded DEFAULTS vs a real persisted source.
+// If DEFAULTS (no real source), we refuse to push to Firebase — prevents accidental overwrites.
+let dealsFromDefaults = false;
+function loadDeals(){
+  try{
+    const s=localStorage.getItem(LS_KEY);
+    if(s){ dealsFromDefaults = false; return JSON.parse(s); }
+  }catch(e){}
+  dealsFromDefaults = true;
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+// Hash-identity check: does the current in-memory array match the hardcoded DEFAULTS exactly?
+function dealsEqualDefaults(){
+  try{
+    const a = deals.map(d=>({...d})); a.forEach(d=>{delete d._patchedTo;});
+    const b = DEFAULTS.map(d=>({...d})); b.forEach(d=>{delete d._patchedTo;});
+    return JSON.stringify(a)===JSON.stringify(b);
+  }catch(e){ return false; }
+}
 function saveDeals(){
+  // 🛡 Guardrail: never let the app push the factory DEFAULTS over a real cloud state.
+  // saveDeals is only allowed if the user has explicitly created/edited something (dealsFromDefaults=false)
+  // OR the current state differs from DEFAULTS.
+  if(dealsFromDefaults && dealsEqualDefaults()){
+    console.warn('[saveDeals] Blocked: deals still match DEFAULTS and were loaded from DEFAULTS. Not syncing to Firebase until user makes a change.');
+    return;
+  }
   const _ts = Date.now();
   localStorage.setItem(LS_KEY,JSON.stringify(deals));
   localStorage.setItem(LS_KEY+'_savedAt', String(_ts));
+  // Once we've saved once, the current data IS the real source — clear the DEFAULTS flag.
+  dealsFromDefaults = false;
   // Firebase sync — primary cloud storage
   if(fbReady){
     _pendingWrite = true;
@@ -367,10 +394,11 @@ function saveDeals(){
       .then(()=>{ _pendingWrite = false; localStorage.setItem(LS_KEY+'_fbSyncedAt', String(_ts)); updateSyncStatus('saved'); })
       .catch(()=>{ _pendingWrite = false; updateSyncStatus('error'); });
   }
-  // OneDrive folder backup (optional)
+  // OneDrive folder backup (optional) — stamped with same timestamp for cross-device conflict resolution
   if(dataFolderHandle){
+    const payload = {_savedAt:_ts, deals};
     dataFolderHandle.getFileHandle('deals_data.json',{create:true}).then(fh=>
-      fh.createWritable().then(w=>w.write(JSON.stringify(deals,null,2)).then(()=>w.close()))
+      fh.createWritable().then(w=>w.write(JSON.stringify(payload.deals,null,2)).then(()=>w.close()))
     ).catch(()=>{});
   }
 }
@@ -414,7 +442,20 @@ async function readDealsFromFile(){
     if(Array.isArray(parsed)&&parsed.length>0){
       deals=parsed;
       nextId=Math.max(...deals.map(d=>d.id),0)+1;
+      dealsFromDefaults = false; // Real data from disk — mark as authoritative
+      // Stamp timestamps so the Firebase listener treats this as newer than cloud state
+      const t = Date.now();
       localStorage.setItem(LS_KEY,JSON.stringify(deals));
+      localStorage.setItem(LS_KEY+'_savedAt', String(t));
+      // If Firebase is already connected, push the file contents up too
+      if(fbReady){
+        _pendingWrite = true;
+        fbRef.set(deals).then(()=>{
+          _pendingWrite=false;
+          localStorage.setItem(LS_KEY+'_fbSyncedAt', String(t));
+          updateSyncStatus('saved');
+        }).catch(()=>{ _pendingWrite=false; });
+      }
       render();
       showToast('Deals loaded from OneDrive ✅','green');
     }
@@ -1326,10 +1367,16 @@ fbRef.on('value', snapshot => {
     fbReady = true;
     updateSyncStatus('saved');
   } else {
-    // Firebase is empty — first time setup: push local deals up
+    // Firebase returned empty/null. This could be a legitimate first-time setup OR a transient read
+    // failure. Only push local data up if we have REAL local data (not just the hardcoded DEFAULTS).
     fbReady = true;
-    saveDeals();
-    updateSyncStatus('saved');
+    if(dealsFromDefaults && dealsEqualDefaults()){
+      console.warn('[fbListener] Firebase empty AND local is just DEFAULTS — refusing to write. This prevents a DEFAULTS-overwrite race.');
+      updateSyncStatus('error');
+    } else {
+      saveDeals();
+      updateSyncStatus('saved');
+    }
   }
 });
 
