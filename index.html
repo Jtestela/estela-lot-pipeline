@@ -348,15 +348,15 @@ const DEFAULTS = [
 ];
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
+// Track whether the current `deals` came from hardcoded DEFAULTS vs a real persisted source.
+// MUST be declared before loadDeals() runs (loadDeals writes to this).
+let dealsFromDefaults = false;
 let deals = loadDeals(), activeFilter = 'All', editingId = null, pendingAttachments = [];
 let nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
 let docsFolderHandle = null;
 let dataFolderHandle = null;
 let _pendingWrite = false;
 
-// Track whether the current `deals` came from hardcoded DEFAULTS vs a real persisted source.
-// If DEFAULTS (no real source), we refuse to push to Firebase — prevents accidental overwrites.
-let dealsFromDefaults = false;
 function loadDeals(){
   try{
     const s=localStorage.getItem(LS_KEY);
