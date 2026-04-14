@@ -229,6 +229,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
           </select>
           <input class="form-input" id="f_spv_custom" placeholder="Custom SPV name" style="display:none;margin-top:4px;"/>
         </div>
+        <div class="form-group"><label class="form-label">Title Company</label><input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title"/></div>
         <div class="form-group"><label class="form-label">Stage</label>
           <select class="form-select" id="f_stage">
             <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
@@ -1069,6 +1070,7 @@ function openEdit(id){
   document.getElementById('f_escrowPaid').value=d.escrowPaid?'true':'false';
   document.getElementById('f_dd').value=d.dd||'';
   document.getElementById('f_notes').value=d.notes||'';
+  document.getElementById('f_titleCompany').value=d.titleCompany||'';
   document.getElementById('f_stage').value=d.stage||'Offer Letter';
   if(SPV_LIST.includes(d.spv)){document.getElementById('f_spv').value=d.spv;document.getElementById('f_spv_custom').style.display='none';}
   else{document.getElementById('f_spv').value='__custom__';document.getElementById('f_spv_custom').style.display='block';document.getElementById('f_spv_custom').value=d.spv||'';}
@@ -1080,7 +1082,7 @@ function openEdit(id){
 }
 
 function clearForm(){
-  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom'].forEach(id=>{document.getElementById(id).value='';});
+  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';
   document.getElementById('f_stage').value='Offer Letter';document.getElementById('f_spv_custom').style.display='none';
 }
@@ -1093,7 +1095,7 @@ function saveDeal(){
   const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
-  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
+  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();closeOverlay('editOverlay');render();showToast('Deal saved!','green');
   if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
@@ -1229,6 +1231,16 @@ function parseContractText(strings){
     if(m){result.escrowDays=p.source.includes('48')?2:parseInt(m[1]);break;}
   }
 
+  // ── Title Company ── look for "Title" in company name patterns
+  const titlePhrases=[/\b([A-Z][\w\s&'-]{1,40}Title(?:\s+(?:Company|Group|Agency|Services|LLC))?)\b/];
+  for(const s of strings){
+    for(const p of titlePhrases){const m=s.match(p);if(m&&!/Due|Search|Insurance|Commitment/i.test(m[1])){result.titleCompany=m[1].trim();break;}}
+    if(result.titleCompany)break;
+  }
+  if(!result.titleCompany){
+    for(const p of titlePhrases){const m=flat.match(p);if(m&&!/Due|Search|Insurance|Commitment/i.test(m[1])){result.titleCompany=m[1].trim();break;}}
+  }
+
   // ── Due Diligence days ──
   const ddPatterns=[
     /[Dd]ue\s+[Dd]iligence\s+(?:to last|period|Period)\s+(\d+)\s+days/i,
@@ -1268,6 +1280,7 @@ function applyParsedFields(f){
     filled.push('SPV');
   }
   if(f.close){document.getElementById('f_close').value=f.close;filled.push('Close Date');}
+  if(f.titleCompany){document.getElementById('f_titleCompany').value=f.titleCompany;filled.push('Title Co.');}
 
   // Compute escrow due date from today + days
   if(f.escrowDays){
@@ -1284,7 +1297,7 @@ function applyParsedFields(f){
   // Auto-set stage
   document.getElementById('f_stage').value='Under Contract (Escrow)';
 
-  const allFields=['Address','Parcel ID','Purchase Price','SPV','Close Date','Escrow Due','DD Deadline'];
+  const allFields=['Address','Parcel ID','Purchase Price','SPV','Close Date','Title Co.','Escrow Due','DD Deadline'];
   const missed=allFields.filter(x=>!filled.includes(x));
   const res=document.getElementById('analyzeResult');
   if(res){
@@ -1495,6 +1508,7 @@ function buildReportHTML(){
     return `<tr>
       <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
       <td>${d.spv||'—'}</td>
+      <td>${d.titleCompany||'—'}</td>
       <td>${d.stage}</td>
       <td>${fd(d.close)} &nbsp;${daysLabel(d.close)}</td>
       <td>${fm(d.amount)}</td>
@@ -1505,6 +1519,7 @@ function buildReportHTML(){
     return `<tr>
       <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
       <td>${d.spv||'—'}</td>
+      <td>${d.titleCompany||'—'}</td>
       <td>${fd(d.escrow)} &nbsp;${daysLabel(d.escrow)}</td>
       <td>${fm(d.amount)}</td>
     </tr>`;
@@ -1514,6 +1529,7 @@ function buildReportHTML(){
     return `<tr>
       <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
       <td>${d.spv||'—'}</td>
+      <td>${d.titleCompany||'—'}</td>
       <td>${fd(d.dd)} &nbsp;${daysLabel(d.dd)}</td>
       <td>${fm(d.amount)}</td>
     </tr>`;
@@ -1531,7 +1547,7 @@ function buildReportHTML(){
       <div class="report-section-title">🗓 Closings in the Next 7 Days <span>${closing.length} deal${closing.length!==1?'s':''}</span></div>
       ${closing.length ? `
       <table class="report-table">
-        <thead><tr><th>Property</th><th>SPV</th><th>Stage</th><th>Close Date</th><th>Amount</th></tr></thead>
+        <thead><tr><th>Property</th><th>SPV</th><th>Title Co.</th><th>Stage</th><th>Close Date</th><th>Amount</th></tr></thead>
         <tbody>${closing.map(closingRow).join('')}</tbody>
       </table>` : '<div class="report-empty">No closings in the next 7 days</div>'}
     </div>
@@ -1540,7 +1556,7 @@ function buildReportHTML(){
       <div class="report-section-title">💰 Escrow Deposits Due in the Next 7 Days <span>${escrow.length} deal${escrow.length!==1?'s':''}</span></div>
       ${escrow.length ? `
       <table class="report-table">
-        <thead><tr><th>Property</th><th>SPV</th><th>Escrow Due</th><th>Amount</th></tr></thead>
+        <thead><tr><th>Property</th><th>SPV</th><th>Title Co.</th><th>Escrow Due</th><th>Amount</th></tr></thead>
         <tbody>${escrow.map(escrowRow).join('')}</tbody>
       </table>` : '<div class="report-empty">No escrow deposits due in the next 7 days</div>'}
     </div>
@@ -1549,7 +1565,7 @@ function buildReportHTML(){
       <div class="report-section-title">🔍 Due Diligence Expirations in the Next 10 Days <span>${dd.length} deal${dd.length!==1?'s':''}</span></div>
       ${dd.length ? `
       <table class="report-table">
-        <thead><tr><th>Property</th><th>SPV</th><th>DD Expires</th><th>Amount</th></tr></thead>
+        <thead><tr><th>Property</th><th>SPV</th><th>Title Co.</th><th>DD Expires</th><th>Amount</th></tr></thead>
         <tbody>${dd.map(ddRow).join('')}</tbody>
       </table>` : '<div class="report-empty">No DD expirations in the next 10 days</div>'}
     </div>
