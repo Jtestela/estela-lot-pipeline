@@ -48,12 +48,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .stage-title{font-size:12px;font-weight:700;color:#fff;}.stage-badge{background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;}
 .stage-total{font-size:11px;color:rgba(255,255,255,.8);}
 .stage-body{background:#fff;border:1.5px solid var(--gray-border);border-top:none;border-radius:0 0 10px 10px;padding:8px;display:flex;flex-direction:column;gap:7px;min-height:60px;box-shadow:0 2px 8px rgba(0,0,0,.05);max-height:calc(100vh - 255px);overflow-y:auto;}
-.sh-offer{background:var(--blue-mid);}.sh-escrow{background:var(--orange);}.sh-dd{background:var(--red-dark);}.sh-permit{background:var(--green-dark);}.sh-closed{background:var(--teal-dark);}.sh-cancelled{background:#6B7280;}
+.sh-offer{background:var(--blue-mid);}.sh-escrow{background:var(--orange);}.sh-dd{background:var(--red-dark);}.sh-ctc{background:#7C3AED;}.sh-permit{background:var(--green-dark);}.sh-closed{background:var(--teal-dark);}.sh-cancelled{background:#6B7280;}
 /* CARD */
 .deal-card{background:#fff;border:1.5px solid var(--gray-border);border-radius:8px;padding:10px 12px;cursor:pointer;transition:box-shadow .15s,transform .1s;position:relative;overflow:hidden;flex-shrink:0;}
 .deal-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);transform:translateY(-1px);}
 .deal-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:8px 0 0 8px;}
-.offer::before{background:var(--blue-mid);}.escrow::before{background:var(--orange);}.dd::before{background:var(--red-dark);}.permit::before{background:var(--green-dark);}.closed::before{background:var(--teal-dark);}.cancelled::before{background:#6B7280;}
+.offer::before{background:var(--blue-mid);}.escrow::before{background:var(--orange);}.dd::before{background:var(--red-dark);}.ctc::before{background:#7C3AED;}.permit::before{background:var(--green-dark);}.closed::before{background:var(--teal-dark);}.cancelled::before{background:#6B7280;}
 .card-alert-note{font-size:10px;color:var(--red-alert);font-weight:600;margin-bottom:3px;}
 .card-address{font-size:12px;font-weight:600;margin-bottom:5px;line-height:1.4;padding-right:48px;}
 .card-amount{font-size:16px;font-weight:700;color:var(--blue-dark);margin-bottom:6px;}
@@ -232,7 +232,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
         <div class="form-group"><label class="form-label">Title Company</label><input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title"/></div>
         <div class="form-group"><label class="form-label">Stage</label>
           <select class="form-select" id="f_stage">
-            <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
+            <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Clear to Close</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Close Date</label><input class="form-input" id="f_close" type="date"/></div>
@@ -337,6 +337,7 @@ const STAGES = [
   {key:'Offer Letter',          cls:'offer',  hdr:'sh-offer',  badge:'background:#DBEAFE;color:#1D4ED8'},
   {key:'Under Contract (Escrow)',cls:'escrow', hdr:'sh-escrow', badge:'background:#FEF3C7;color:#92400E'},
   {key:'Due Diligences',        cls:'dd',     hdr:'sh-dd',     badge:'background:#FEE2E2;color:#991B1B'},
+  {key:'Clear to Close',        cls:'ctc',    hdr:'sh-ctc',    badge:'background:#EDE9FE;color:#5B21B6'},
   {key:'Permitting',            cls:'permit', hdr:'sh-permit', badge:'background:#DCFCE7;color:#166534'},
   {key:'Closed / Purchased',    cls:'closed', hdr:'sh-closed', badge:'background:#CCFBF1;color:#0F766E'},
   {key:'Cancelled',             cls:'cancelled',hdr:'sh-cancelled',badge:'background:#F3F4F6;color:#6B7280'},
