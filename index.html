@@ -1100,7 +1100,8 @@ function saveDeal(){
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();closeOverlay('editOverlay');render();showToast('Deal saved!','green');
   if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
-  if(docsFolderHandle&&deal.stage!=='Cancelled') createDealFolder(deal.address);
+  if(deal.stage==='Closed / Purchased'&&oldStage!=='Closed / Purchased') moveFolderToClosed(deal);
+  if(docsFolderHandle&&deal.stage!=='Cancelled'&&deal.stage!=='Closed / Purchased') createDealFolder(deal.address);
 }
 
 function confirmDelete(){const d=deals.find(x=>x.id===editingId);if(!d)return;document.getElementById('confirmName').textContent=d.address;document.getElementById('confirmOverlay').classList.add('open');}
@@ -1386,6 +1387,44 @@ async function moveFolderToCancelled(deal){
   }
 }
 
+async function moveFolderToClosed(deal){
+  if(!docsFolderHandle)return;
+  const folderName=sanitize(deal.address.split(',')[0]);
+  let dealDir;
+  try{dealDir=await docsFolderHandle.getDirectoryHandle(folderName);}
+  catch(e){return;} // folder doesn't exist yet, nothing to move
+  try{
+    const closedDir=await docsFolderHandle.getDirectoryHandle('Closed',{create:true});
+    const destDir=await closedDir.getDirectoryHandle(folderName,{create:true});
+    async function copyTree(srcDir, dstDir){
+      for await(const entry of srcDir.values()){
+        if(entry.kind==='file'){
+          const file=await entry.getFile();
+          const destFH=await dstDir.getFileHandle(entry.name,{create:true});
+          const w=await destFH.createWritable();
+          await w.write(file); await w.close();
+          await srcDir.removeEntry(entry.name);
+        } else if(entry.kind==='directory'){
+          const newDst=await dstDir.getDirectoryHandle(entry.name,{create:true});
+          await copyTree(entry,newDst);
+          try{ await srcDir.removeEntry(entry.name); }catch(e){}
+        }
+      }
+    }
+    await copyTree(dealDir,destDir);
+    try{await docsFolderHandle.removeEntry(folderName,{recursive:true});}catch(e){}
+    const d=deals.find(x=>x.id===deal.id);
+    if(d&&d.attachments){
+      d.attachments=d.attachments.map(a=>({...a,folder:'Closed/'+folderName}));
+      saveDeals();
+    }
+    showToast('📁 Folder moved to Closed/ ✓','green');
+  }catch(e){
+    console.error('moveFolderToClosed:',e);
+    showToast('Could not move folder: '+e.message,'red');
+  }
+}
+
 // ── DRAG & DROP ───────────────────────────────────────────────────────────────
 let dragId=null;
 function cardDragStart(e,id){
@@ -1413,6 +1452,7 @@ function colDrop(e,stageName){
   render();
   showToast(`Moved to ${stageName} ✓`,'green');
   if(stageName==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
+  if(stageName==='Closed / Purchased'&&oldStage!=='Closed / Purchased') moveFolderToClosed(deal);
 }
 
 // ── BACKUPS MODAL ─────────────────────────────────────────────────────────────
