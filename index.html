@@ -1522,19 +1522,19 @@ function buildReportHTML(){
   const now = TODAY;
   const dateStr = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  // Section 1 — Closings within 7 days
+  // Section 1 — Closings: overdue (not yet closed) + upcoming within 7 days
   const closing = active
-    .filter(d => d.close && diff(d.close) >= 0 && diff(d.close) <= 7)
+    .filter(d => d.close && d.stage !== 'Closed / Purchased' && diff(d.close) <= 7)
     .sort((a,b) => pd(a.close) - pd(b.close));
 
-  // Section 2 — Escrow due within 7 days (unpaid only)
+  // Section 2 — Escrow: overdue (unpaid) + due within 7 days
   const escrow = active
-    .filter(d => !d.escrowPaid && d.escrow && diff(d.escrow) >= -30 && diff(d.escrow) <= 7)
+    .filter(d => !d.escrowPaid && d.escrow && diff(d.escrow) <= 7)
     .sort((a,b) => pd(a.escrow) - pd(b.escrow));
 
-  // Section 3 — DD expiring within 10 days (future only)
+  // Section 3 — DD: overdue (still in pre-DD stages) + expiring within 10 days
   const dd = active
-    .filter(d => d.dd && diff(d.dd) >= 0 && diff(d.dd) <= 10)
+    .filter(d => d.dd && diff(d.dd) <= 10)
     .sort((a,b) => pd(a.dd) - pd(b.dd));
 
   function daysLabel(s){
@@ -1585,30 +1585,30 @@ function buildReportHTML(){
     </div>
 
     <div class="report-section">
-      <div class="report-section-title">🗓 Closings in the Next 7 Days <span>${closing.length} deal${closing.length!==1?'s':''}</span></div>
+      <div class="report-section-title">🗓 Closings — Overdue & Next 7 Days <span>${closing.length} deal${closing.length!==1?'s':''}</span></div>
       ${closing.length ? `
       <table class="report-table">
         <thead><tr><th>Property</th><th>SPV</th><th>Title Co.</th><th>Stage</th><th>Close Date</th><th>Amount</th></tr></thead>
         <tbody>${closing.map(closingRow).join('')}</tbody>
-      </table>` : '<div class="report-empty">No closings in the next 7 days</div>'}
+      </table>` : '<div class="report-empty">No overdue or upcoming closings</div>'}
     </div>
 
     <div class="report-section">
-      <div class="report-section-title">💰 Escrow Deposits Due in the Next 7 Days <span>${escrow.length} deal${escrow.length!==1?'s':''}</span></div>
+      <div class="report-section-title">💰 Escrow Deposits — Overdue & Next 7 Days <span>${escrow.length} deal${escrow.length!==1?'s':''}</span></div>
       ${escrow.length ? `
       <table class="report-table">
         <thead><tr><th>Property</th><th>SPV</th><th>Title Co.</th><th>Escrow Due</th><th>Amount</th></tr></thead>
         <tbody>${escrow.map(escrowRow).join('')}</tbody>
-      </table>` : '<div class="report-empty">No escrow deposits due in the next 7 days</div>'}
+      </table>` : '<div class="report-empty">No overdue or upcoming escrow deposits</div>'}
     </div>
 
     <div class="report-section">
-      <div class="report-section-title">🔍 Due Diligence Expirations in the Next 10 Days <span>${dd.length} deal${dd.length!==1?'s':''}</span></div>
+      <div class="report-section-title">🔍 Due Diligence — Overdue & Next 10 Days <span>${dd.length} deal${dd.length!==1?'s':''}</span></div>
       ${dd.length ? `
       <table class="report-table">
         <thead><tr><th>Property</th><th>SPV</th><th>Title Co.</th><th>DD Expires</th><th>Amount</th></tr></thead>
         <tbody>${dd.map(ddRow).join('')}</tbody>
-      </table>` : '<div class="report-empty">No DD expirations in the next 10 days</div>'}
+      </table>` : '<div class="report-empty">No overdue or upcoming DD expirations</div>'}
     </div>
   `;
 }
