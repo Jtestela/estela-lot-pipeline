@@ -176,9 +176,30 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .rt-alert{color:var(--red-alert);font-weight:700;}
 .rt-warn{color:var(--yellow);font-weight:700;}
 .rt-ok{color:var(--green-ok);font-weight:600;}
+/* CASHFLOW REPORT */
+.cf-modal{width:850px;}
+.cf-spv-block{margin-bottom:24px;border:1px solid var(--gray-border);border-radius:8px;overflow:hidden;}
+.cf-spv-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-weight:700;font-size:13px;color:#fff;}
+.cf-spv-header .cf-spv-total{font-size:12px;font-weight:600;opacity:.9;}
+.cf-week-header{background:#F8FAFC;padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);border-bottom:1px solid var(--gray-border);border-top:1px solid var(--gray-border);display:flex;justify-content:space-between;}
+.cf-deal-row{display:flex;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid #F1F3F5;gap:8px;}
+.cf-deal-row:hover{background:#FAFBFC;}
+.cf-deal-addr{flex:1;font-weight:600;}
+.cf-deal-stage{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;}
+.cf-deal-type{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;}
+.cf-type-escrow{background:#FEF3C7;color:#92400E;}
+.cf-type-closing{background:#DBEAFE;color:#1D4ED8;}
+.cf-deal-date{width:90px;text-align:right;font-size:11px;}
+.cf-deal-amount{width:90px;text-align:right;font-weight:700;}
+.cf-deal-status{width:70px;text-align:right;font-size:11px;}
+.cf-summary{margin-bottom:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.cf-summary-card{background:#F8FAFC;border:1px solid var(--gray-border);border-radius:8px;padding:12px 14px;text-align:center;}
+.cf-summary-card .cf-sum-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);font-weight:600;}
+.cf-summary-card .cf-sum-value{font-size:20px;font-weight:700;color:var(--text);margin-top:2px;}
+.cf-overdue-tag{color:var(--red-alert);font-weight:700;font-size:10px;}
 @media print{
   .navbar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
-  #reportOverlay{position:static!important;background:none!important;display:block!important;}
+  #reportOverlay.open,#cashflowOverlay.open{position:static!important;background:none!important;display:block!important;}
   .modal{box-shadow:none!important;max-height:none!important;width:100%!important;border-radius:0!important;}
   .report-print-btn,.modal-footer,.modal-close{display:none!important;}
   .modal-header{border-radius:0!important;}
@@ -196,6 +217,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <button class="btn-nav btn-sync" id="btnSync" onclick="syncDocsFolder()" title="Scan Documents folder and sync all attachments" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">🔄 Sync Docs</button>
     <div class="navbar-date" id="navDate"></div>
     <button class="btn-nav" onclick="openReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Weekly pipeline report">📋 Report</button>
+    <button class="btn-nav" onclick="openCashflow()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Cashflow forecast by SPV">💵 Cashflow</button>
     <button class="btn-nav" onclick="openBackups()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Snapshots & restore">💾 Backups</button>
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
   </div>
@@ -286,6 +308,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-body" id="reportBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('reportOverlay')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- CASHFLOW REPORT -->
+<div class="overlay" id="cashflowOverlay" onclick="overlayClick(event,'cashflowOverlay')">
+  <div class="modal cf-modal">
+    <div class="modal-header"><h2>💵 Cashflow Forecast by SPV</h2><button class="modal-close" onclick="closeOverlay('cashflowOverlay')">✕</button></div>
+    <div class="modal-body" id="cashflowBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('cashflowOverlay')">Close</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
     </div>
   </div>
@@ -1610,6 +1644,145 @@ function buildReportHTML(){
         <tbody>${dd.map(ddRow).join('')}</tbody>
       </table>` : '<div class="report-empty">No overdue or upcoming DD expirations</div>'}
     </div>
+  `;
+}
+
+// ── CASHFLOW REPORT ──────────────────────────────────────────────────────────
+function openCashflow(){
+  document.getElementById('cashflowBody').innerHTML = buildCashflowHTML();
+  document.getElementById('cashflowOverlay').classList.add('open');
+}
+
+function buildCashflowHTML(){
+  const active = deals.filter(d => d.stage !== 'Cancelled' && d.stage !== 'Closed / Purchased');
+  const dateStr = TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Build cashflow events: each deal can have an escrow event and a closing event
+  const events = [];
+  active.forEach(d => {
+    if(d.escrow && !d.escrowPaid){
+      events.push({deal:d, type:'escrow', date:d.escrow, amount:1000, label:'Escrow Deposit'});
+    }
+    if(d.close){
+      // Closing amount = purchase price minus escrow already paid
+      const closingAmt = d.escrowPaid ? (d.amount - 1000) : d.amount;
+      events.push({deal:d, type:'closing', date:d.close, amount:closingAmt > 0 ? closingAmt : d.amount, label:'Closing Balance'});
+    }
+  });
+
+  // Group events by SPV
+  const spvMap = {};
+  events.forEach(ev => {
+    const spv = ev.deal.spv || 'Unassigned';
+    if(!spvMap[spv]) spvMap[spv] = [];
+    spvMap[spv].push(ev);
+  });
+
+  // Sort each SPV's events by date
+  Object.values(spvMap).forEach(arr => arr.sort((a,b) => pd(a.date) - pd(b.date)));
+
+  // Week label helper
+  function weekLabel(dateStr){
+    const d = pd(dateStr);
+    if(!d) return 'No Date';
+    const daysOut = diff(dateStr);
+    if(daysOut < 0) return '⚠️ OVERDUE';
+    if(daysOut <= 7) return 'This Week';
+    if(daysOut <= 14) return 'Next Week';
+    // Get Monday of that week
+    const mon = new Date(d); mon.setDate(mon.getDate() - mon.getDay() + 1);
+    return 'Week of ' + mon.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  }
+
+  // SPV color palette
+  const spvColors = {
+    'Estela Living LLC':'#1D4ED8',
+    'Estela Specs 1 LLC':'#7C3AED',
+    'Estela Specs 2 LLC':'#0F766E',
+    'Estela Specs 6 LLC':'#B45309',
+    'Estela Specs 7 LLC':'#BE185D',
+    'Estela Specs 9 LLC':'#15803D',
+  };
+
+  // Summary totals
+  let totalEscrow = 0, totalClosing = 0, totalOverdue = 0;
+  events.forEach(ev => {
+    if(ev.type === 'escrow') totalEscrow += ev.amount;
+    else totalClosing += ev.amount;
+    if(diff(ev.date) < 0) totalOverdue += ev.amount;
+  });
+
+  // Build SPV sections
+  const spvKeys = Object.keys(spvMap).sort();
+  let spvSections = '';
+
+  spvKeys.forEach(spv => {
+    const evs = spvMap[spv];
+    const spvTotal = evs.reduce((s,e) => s + e.amount, 0);
+    const color = spvColors[spv] || '#6B7280';
+
+    // Group by week
+    const weekMap = {};
+    evs.forEach(ev => {
+      const wk = weekLabel(ev.date);
+      if(!weekMap[wk]) weekMap[wk] = [];
+      weekMap[wk].push(ev);
+    });
+
+    let rows = '';
+    Object.keys(weekMap).forEach(wk => {
+      const weekTotal = weekMap[wk].reduce((s,e) => s + e.amount, 0);
+      rows += `<div class="cf-week-header"><span>${wk}</span><span>${fm(weekTotal)}</span></div>`;
+      weekMap[wk].forEach(ev => {
+        const d = ev.deal;
+        const addr = d.address.split(',')[0];
+        const daysOut = diff(ev.date);
+        const overdue = daysOut < 0 ? `<span class="cf-overdue-tag">${Math.abs(daysOut)}d overdue</span>` : '';
+        const statusTag = daysOut < 0 ? overdue : (daysOut === 0 ? '<span class="cf-overdue-tag">TODAY</span>' : `<span style="color:var(--text-light);font-size:10px">${daysOut}d</span>`);
+        rows += `<div class="cf-deal-row">
+          <span class="cf-deal-addr">${addr}</span>
+          <span class="cf-deal-type ${ev.type==='escrow'?'cf-type-escrow':'cf-type-closing'}">${ev.label}</span>
+          <span class="cf-deal-date">${fd(ev.date)}</span>
+          <span class="cf-deal-amount">${fm(ev.amount)}</span>
+          <span class="cf-deal-status">${statusTag}</span>
+        </div>`;
+      });
+    });
+
+    spvSections += `
+      <div class="cf-spv-block">
+        <div class="cf-spv-header" style="background:${color}">
+          <span>${spv}</span>
+          <span class="cf-spv-total">${evs.length} item${evs.length!==1?'s':''} · ${fm(spvTotal)}</span>
+        </div>
+        ${rows}
+      </div>`;
+  });
+
+  return `
+    <div class="report-header-block">
+      <div class="report-title-block">
+        <div class="report-title">Cashflow Forecast by SPV</div>
+        <div class="report-subtitle">Generated ${dateStr} · Active deals only (excludes Closed & Cancelled)</div>
+      </div>
+    </div>
+
+    <div class="cf-summary">
+      <div class="cf-summary-card">
+        <div class="cf-sum-label">Pending Escrow Deposits</div>
+        <div class="cf-sum-value">${fm(totalEscrow)}</div>
+      </div>
+      <div class="cf-summary-card">
+        <div class="cf-sum-label">Closing Balances Due</div>
+        <div class="cf-sum-value">${fm(totalClosing)}</div>
+      </div>
+      <div class="cf-summary-card" ${totalOverdue > 0 ? 'style="border-color:var(--red-alert);background:#FEF2F2"' : ''}>
+        <div class="cf-sum-label">Overdue Total</div>
+        <div class="cf-sum-value" ${totalOverdue > 0 ? 'style="color:var(--red-alert)"' : ''}>${fm(totalOverdue)}</div>
+      </div>
+    </div>
+
+    ${spvSections || '<div class="report-empty">No active deals with upcoming cash needs</div>'}
   `;
 }
 
