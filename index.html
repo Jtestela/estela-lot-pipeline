@@ -265,6 +265,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
         </div>
         <div class="form-group"><label class="form-label">DD Due Date</label><input class="form-input" id="f_dd" type="date"/></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f_notes"></textarea></div>
+        <div class="form-group full"><label class="form-label">📍 Google Maps Link</label><div style="display:flex;gap:6px;align-items:center;"><input class="form-input" id="f_mapLink" placeholder="Paste Google Maps URL" style="flex:1;"/><a id="f_mapBtn" href="#" target="_blank" rel="noopener" style="display:none;background:var(--blue-dark);color:#fff;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">🗺 Open Map</a></div></div>
       </div>
       <!-- ATTACHMENTS -->
       <div class="attach-section">
@@ -282,9 +283,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeOverlay('editOverlay')">Cancel</button>
+      <button class="btn btn-ghost" id="btnCancel" onclick="closeOverlay('editOverlay')">Cancel</button>
       <button class="btn btn-danger" id="btnDelete" onclick="confirmDelete()" style="display:none;font-size:11px;padding:8px 12px;">🗑 Delete</button>
-      <button class="btn btn-primary" onclick="saveDeal()">Save Deal</button>
+      <span id="autoSaveStatus" style="font-size:11px;color:var(--green-ok);font-weight:600;display:none;">✓ Auto-saved</span>
+      <button class="btn btn-primary" id="btnSave" onclick="saveDeal()">Save Deal</button>
+      <button class="btn btn-primary" id="btnDone" onclick="closeOverlay('editOverlay')" style="display:none;">Done</button>
     </div>
   </div>
 </div>
@@ -1013,7 +1016,7 @@ function render(){
 function renderCard(d,s){
   const alert=hasAlert(d);
   const ac=(d.attachments||[]).length;
-  return`<div class="deal-card ${s.cls}" draggable="true" ondragstart="cardDragStart(event,${d.id})" ondragend="cardDragEnd(event)" ${alert?'style="border-color:#FECACA"':''} onclick="openDetail(${d.id})">
+  return`<div class="deal-card ${s.cls}" draggable="true" ondragstart="cardDragStart(event,${d.id})" ondragend="cardDragEnd(event)" ${alert?'style="border-color:#FECACA"':''} onclick="openEdit(${d.id})">
     <div class="card-actions">${ac?`<span class="attach-count">📎${ac}</span>`:''}<button class="card-btn" onclick="event.stopPropagation();openEdit(${d.id})">✏️</button></div>
     ${d.notes?`<div class="card-alert-note">⚠ ${d.notes}</div>`:''}
     <div class="card-address">${d.address}</div>
@@ -1084,6 +1087,10 @@ function openAddDeal(){
   editingId=null;pendingAttachments=[];pendingAnalysisFile=null;pendingCategoryPick='contract';
   document.getElementById('editTitle').textContent='Add New Deal';
   document.getElementById('btnDelete').style.display='none';
+  document.getElementById('btnSave').style.display='inline-block';
+  document.getElementById('btnDone').style.display='none';
+  document.getElementById('btnCancel').style.display='inline-block';
+  document.getElementById('autoSaveStatus').style.display='none';
   const bar=document.getElementById('analyzeBar');if(bar){bar.style.display='none';}
   const res=document.getElementById('analyzeResult');if(res){res.style.display='none';}
   clearForm();updateFolderHint('');populateCatPicker();
@@ -1097,6 +1104,10 @@ function openEdit(id){
   editingId=id;pendingAttachments=JSON.parse(JSON.stringify(d.attachments||[]));
   document.getElementById('editTitle').textContent='Edit Deal';
   document.getElementById('btnDelete').style.display='inline-block';
+  document.getElementById('btnSave').style.display='none';
+  document.getElementById('btnDone').style.display='inline-block';
+  document.getElementById('btnCancel').style.display='none';
+  document.getElementById('autoSaveStatus').style.display='none';
   document.getElementById('f_address').value=d.address||'';
   document.getElementById('f_parcel').value=d.parcel||'';
   document.getElementById('f_amount').value=d.amount||'';
@@ -1106,6 +1117,8 @@ function openEdit(id){
   document.getElementById('f_dd').value=d.dd||'';
   document.getElementById('f_notes').value=d.notes||'';
   document.getElementById('f_titleCompany').value=d.titleCompany||'';
+  document.getElementById('f_mapLink').value=d.mapLink||'';
+  updateMapBtn();
   document.getElementById('f_stage').value=d.stage||'Offer Letter';
   if(SPV_LIST.includes(d.spv)){document.getElementById('f_spv').value=d.spv;document.getElementById('f_spv_custom').style.display='none';}
   else{document.getElementById('f_spv').value='__custom__';document.getElementById('f_spv_custom').style.display='block';document.getElementById('f_spv_custom').value=d.spv||'';}
@@ -1117,22 +1130,62 @@ function openEdit(id){
 }
 
 function clearForm(){
-  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany'].forEach(id=>{document.getElementById(id).value='';});
+  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_mapLink'].forEach(id=>{document.getElementById(id).value='';});
+  const mb=document.getElementById('f_mapBtn');if(mb){mb.style.display='none';mb.href='#';}
   document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';
   document.getElementById('f_stage').value='Offer Letter';document.getElementById('f_spv_custom').style.display='none';
 }
 function toggleCustomSpv(el){document.getElementById('f_spv_custom').style.display=el.value==='__custom__'?'block':'none';}
 
-function saveDeal(){
+// Map link button helper
+function updateMapBtn(){
+  const v=document.getElementById('f_mapLink').value.trim();
+  const btn=document.getElementById('f_mapBtn');
+  if(v&&(v.startsWith('http')||v.startsWith('maps'))){btn.href=v;btn.style.display='inline-block';}
+  else{btn.style.display='none';btn.href='#';}
+}
+
+// Auto-save: debounce saves when editing an existing deal
+let _autoSaveTimer=null;
+function autoSaveIfEditing(){
+  if(!editingId) return; // only auto-save for existing deals, not new ones
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(()=>{
+    saveDeal(true); // true = silent auto-save
+    const st=document.getElementById('autoSaveStatus');
+    if(st){st.style.display='inline';setTimeout(()=>{st.style.display='none';},2000);}
+  }, 600);
+}
+// Attach auto-save listeners once DOM is ready
+(function(){
+  const fields=['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_mapLink'];
+  fields.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',()=>{
+      autoSaveIfEditing();
+      if(id==='f_mapLink') updateMapBtn();
+    });
+  });
+  ['f_spv','f_escrowPaid','f_stage'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change',()=>{
+      autoSaveIfEditing();
+      if(id==='f_spv') toggleCustomSpv(el);
+    });
+  });
+})();
+
+function saveDeal(silent){
   const address=document.getElementById('f_address').value.trim();
   if(!address){alert('Property address is required.');return;}
   const spvEl=document.getElementById('f_spv').value;
   const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
-  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
+  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
-  saveDeals();closeOverlay('editOverlay');render();showToast('Deal saved!','green');
+  saveDeals();render();
+  if(!silent){closeOverlay('editOverlay');showToast('Deal saved!','green');}
   if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
   if(deal.stage==='Closed / Purchased'&&oldStage!=='Closed / Purchased') moveFolderToClosed(deal);
   if(docsFolderHandle&&deal.stage!=='Cancelled'&&deal.stage!=='Closed / Purchased') createDealFolder(deal.address);
