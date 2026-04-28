@@ -1657,16 +1657,11 @@ function buildCashflowHTML(){
   const active = deals.filter(d => d.stage !== 'Cancelled' && d.stage !== 'Closed / Purchased');
   const dateStr = TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  // Build cashflow events: each deal can have an escrow event and a closing event
+  // Build cashflow events: closing amounts only
   const events = [];
   active.forEach(d => {
-    if(d.escrow && !d.escrowPaid){
-      events.push({deal:d, type:'escrow', date:d.escrow, amount:1000, label:'Escrow Deposit'});
-    }
     if(d.close){
-      // Closing amount = purchase price minus escrow already paid
-      const closingAmt = d.escrowPaid ? (d.amount - 1000) : d.amount;
-      events.push({deal:d, type:'closing', date:d.close, amount:closingAmt > 0 ? closingAmt : d.amount, label:'Closing Balance'});
+      events.push({deal:d, type:'closing', date:d.close, amount:d.amount, label:'Closing'});
     }
   });
 
@@ -1705,10 +1700,9 @@ function buildCashflowHTML(){
   };
 
   // Summary totals
-  let totalEscrow = 0, totalClosing = 0, totalOverdue = 0;
+  let totalClosing = 0, totalOverdue = 0;
   events.forEach(ev => {
-    if(ev.type === 'escrow') totalEscrow += ev.amount;
-    else totalClosing += ev.amount;
+    totalClosing += ev.amount;
     if(diff(ev.date) < 0) totalOverdue += ev.amount;
   });
 
@@ -1767,13 +1761,9 @@ function buildCashflowHTML(){
       </div>
     </div>
 
-    <div class="cf-summary">
+    <div class="cf-summary" style="grid-template-columns:repeat(2,1fr);">
       <div class="cf-summary-card">
-        <div class="cf-sum-label">Pending Escrow Deposits</div>
-        <div class="cf-sum-value">${fm(totalEscrow)}</div>
-      </div>
-      <div class="cf-summary-card">
-        <div class="cf-sum-label">Closing Balances Due</div>
+        <div class="cf-sum-label">Total Closing Amounts Due</div>
         <div class="cf-sum-value">${fm(totalClosing)}</div>
       </div>
       <div class="cf-summary-card" ${totalOverdue > 0 ? 'style="border-color:var(--red-alert);background:#FEF2F2"' : ''}>
