@@ -1619,9 +1619,10 @@ function buildReportHTML(){
     .filter(d => !d.escrowPaid && d.escrow && diff(d.escrow) <= 7)
     .sort((a,b) => pd(a.escrow) - pd(b.escrow));
 
-  // Section 3 — DD: overdue (still in pre-DD stages) + expiring within 10 days
+  // Section 3 — DD: only Due Diligences & Under Contract stages, overdue + next 10 days
+  const ddStages = ['Due Diligences','Under Contract (Escrow)'];
   const dd = active
-    .filter(d => d.dd && diff(d.dd) <= 10)
+    .filter(d => d.dd && diff(d.dd) <= 10 && ddStages.includes(d.stage))
     .sort((a,b) => pd(a.dd) - pd(b.dd));
 
   function daysLabel(s){
