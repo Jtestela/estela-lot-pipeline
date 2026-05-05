@@ -199,7 +199,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .cf-overdue-tag{color:var(--red-alert);font-weight:700;font-size:10px;}
 @media print{
   .navbar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
-  #reportOverlay.open,#cashflowOverlay.open{position:static!important;background:none!important;display:block!important;}
+  #reportOverlay.open,#cashflowOverlay.open,#closingsOverlay.open{position:static!important;background:none!important;display:block!important;}
   .modal{box-shadow:none!important;max-height:none!important;width:100%!important;border-radius:0!important;}
   .report-print-btn,.modal-footer,.modal-close{display:none!important;}
   .modal-header{border-radius:0!important;}
@@ -218,6 +218,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="navbar-date" id="navDate"></div>
     <button class="btn-nav" onclick="openReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Weekly pipeline report">📋 Report</button>
     <button class="btn-nav" onclick="openCashflow()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Cashflow forecast by SPV">💵 Cashflow</button>
+    <button class="btn-nav" onclick="openClosings()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Closings schedule by date">🗓 Closings</button>
     <button class="btn-nav" onclick="openBackups()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Snapshots & restore">💾 Backups</button>
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
   </div>
@@ -323,6 +324,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-body" id="cashflowBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('cashflowOverlay')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSINGS SCHEDULE REPORT -->
+<div class="overlay" id="closingsOverlay" onclick="overlayClick(event,'closingsOverlay')">
+  <div class="modal report-modal" style="width:800px;">
+    <div class="modal-header"><h2>🗓 Closings Schedule</h2><button class="modal-close" onclick="closeOverlay('closingsOverlay')">✕</button></div>
+    <div class="modal-body" id="closingsBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('closingsOverlay')">Close</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
     </div>
   </div>
@@ -1827,6 +1840,94 @@ function buildCashflowHTML(){
     </div>
 
     ${spvSections || '<div class="report-empty">No active deals with upcoming cash needs</div>'}
+  `;
+}
+
+// ── CLOSINGS SCHEDULE REPORT ─────────────────────────────────────────────────
+function openClosings(){
+  document.getElementById('closingsBody').innerHTML = buildClosingsHTML();
+  document.getElementById('closingsOverlay').classList.add('open');
+}
+
+function buildClosingsHTML(){
+  const active = deals.filter(d => d.stage !== 'Cancelled' && d.stage !== 'Closed / Purchased' && d.close);
+  const dateStr = TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Split into overdue vs upcoming, both sorted by close date
+  const overdue = active.filter(d => diff(d.close) < 0).sort((a,b) => pd(a.close) - pd(b.close));
+  const upcoming = active.filter(d => diff(d.close) >= 0).sort((a,b) => pd(a.close) - pd(b.close));
+
+  const spvColors = {
+    'Estela Living LLC':'#1D4ED8','Estela Specs 1 LLC':'#7C3AED','Estela Specs 2 LLC':'#0F766E',
+    'Estela Specs 6 LLC':'#B45309','Estela Specs 7 LLC':'#BE185D','Estela Specs 9 LLC':'#15803D',
+  };
+
+  function daysTag(s){
+    const d = diff(s);
+    if(d < 0) return `<span class="rt-alert">${Math.abs(d)}d overdue</span>`;
+    if(d === 0) return `<span class="rt-alert">Today</span>`;
+    if(d <= 3) return `<span class="rt-warn">${d}d</span>`;
+    return `<span class="rt-ok">${d}d</span>`;
+  }
+
+  function spvBadge(spv){
+    const c = spvColors[spv] || '#6B7280';
+    return `<span style="display:inline-block;background:${c}15;color:${c};font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">${spv||'—'}</span>`;
+  }
+
+  function closingRow(d){
+    return `<tr>
+      <td style="white-space:nowrap">${fd(d.close)} &nbsp;${daysTag(d.close)}</td>
+      <td><strong>${d.address.split(',')[0]}</strong><br><span style="font-size:10px;color:var(--text-light)">${d.address.split(',').slice(1).join(',').trim()}</span></td>
+      <td>${spvBadge(d.spv)}</td>
+      <td>${d.titleCompany||'—'}</td>
+      <td>${d.stage}</td>
+      <td style="text-align:right;font-weight:700">${fm(d.amount)}</td>
+    </tr>`;
+  }
+
+  // SPV summary totals
+  const spvTotals = {};
+  active.forEach(d => {
+    const spv = d.spv || 'Unassigned';
+    if(!spvTotals[spv]) spvTotals[spv] = {count:0, total:0};
+    spvTotals[spv].count++;
+    spvTotals[spv].total += d.amount || 0;
+  });
+  const spvSummaryRows = Object.keys(spvTotals).sort().map(spv => {
+    const t = spvTotals[spv];
+    return `<tr><td>${spvBadge(spv)}</td><td style="text-align:center">${t.count}</td><td style="text-align:right;font-weight:700">${fm(t.total)}</td></tr>`;
+  }).join('');
+  const grandTotal = active.reduce((s,d) => s + (d.amount||0), 0);
+
+  const allRows = [...overdue, ...upcoming];
+
+  return `
+    <div class="report-header-block">
+      <div class="report-title-block">
+        <div class="report-title">Closings Schedule — All SPVs</div>
+        <div class="report-subtitle">Generated ${dateStr} · ${active.length} pending closing${active.length!==1?'s':''} · ${fm(grandTotal)} total</div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="report-section-title">Summary by SPV</div>
+      <table class="report-table" style="width:auto;min-width:350px;">
+        <thead><tr><th>SPV</th><th style="text-align:center">Deals</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody>${spvSummaryRows}</tbody>
+        <tfoot><tr style="border-top:2px solid var(--gray-border);font-weight:700"><td>Total</td><td style="text-align:center">${active.length}</td><td style="text-align:right">${fm(grandTotal)}</td></tr></tfoot>
+      </table>
+    </div>
+
+    <div class="report-section">
+      <div class="report-section-title">All Closings by Date <span>${allRows.length} deal${allRows.length!==1?'s':''}</span></div>
+      ${allRows.length ? `
+      <table class="report-table">
+        <thead><tr><th>Close Date</th><th>Property</th><th>SPV</th><th>Title Co.</th><th>Stage</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>${allRows.map(closingRow).join('')}</tbody>
+        <tfoot><tr style="border-top:2px solid var(--gray-border)"><td colspan="5" style="font-weight:700">Total</td><td style="text-align:right;font-weight:700">${fm(grandTotal)}</td></tr></tfoot>
+      </table>` : '<div class="report-empty">No pending closings</div>'}
+    </div>
   `;
 }
 
