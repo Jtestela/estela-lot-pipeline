@@ -18,6 +18,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .navbar-right{display:flex;align-items:center;gap:8px;}
 .navbar-date{color:#93C5FD;font-size:12px;}
 .btn-nav{border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;}
+/* DROPDOWN MENUS */
+.nav-dropdown{position:relative;}
+.nav-dropdown-btn{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.nav-dropdown-btn:hover{background:rgba(255,255,255,.25);}
+.nav-dropdown-btn .dd-arrow{font-size:8px;opacity:.7;transition:transform .2s;}
+.nav-dropdown.open .dd-arrow{transform:rotate(180deg);}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.18);min-width:200px;padding:4px 0;z-index:200;border:1px solid #E5E7EB;}
+.nav-dropdown.open .nav-dropdown-menu{display:block;}
+.nav-dd-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;border:none;background:none;width:100%;text-align:left;}
+.nav-dd-item:hover{background:#F3F4F6;}
+.nav-dd-item .dd-icon{width:20px;text-align:center;font-size:14px;}
+.nav-dd-divider{height:1px;background:#E5E7EB;margin:4px 0;}
 .btn-add{background:#4FC3F7;color:var(--blue-dark);}
 .btn-folder{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);}
 .btn-nav:hover{opacity:.85;}
@@ -210,16 +222,32 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 <nav class="navbar">
   <div class="navbar-brand"><div class="dot"></div>Estela Realty LLC &nbsp;·&nbsp; Deal Pipeline</div>
   <div class="navbar-right">
-    <div class="folder-status unset" id="syncStatus" title="Click to set OneDrive sync folder">☁️ Not synced</div>
-    <button class="btn-nav" onclick="setDataFolder()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Set OneDrive folder to sync deals across devices">Set Sync Folder</button>
-    <div class="folder-status unset" id="folderStatus" title="Click to set your Documents folder">📁 No folder set</div>
-    <button class="btn-nav btn-folder" onclick="setDocsFolder()">Set Docs Folder</button>
-    <button class="btn-nav btn-sync" id="btnSync" onclick="syncDocsFolder()" title="Scan Documents folder and sync all attachments" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">🔄 Sync Docs</button>
     <div class="navbar-date" id="navDate"></div>
-    <button class="btn-nav" onclick="openReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Weekly pipeline report">📋 Report</button>
-    <button class="btn-nav" onclick="openCashflow()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Cashflow forecast by SPV">💵 Cashflow</button>
-    <button class="btn-nav" onclick="openClosings()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Closings schedule by date">🗓 Closings</button>
-    <button class="btn-nav" onclick="openBackups()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);" title="Snapshots & restore">💾 Backups</button>
+    <div class="folder-status unset" id="syncStatus" title="Click to set OneDrive sync folder" style="display:none;">☁️ Not synced</div>
+    <div class="folder-status unset" id="folderStatus" title="Click to set your Documents folder" style="display:none;">📁 No folder set</div>
+    <button class="btn-nav btn-sync" id="btnSync" onclick="syncDocsFolder()" title="Scan Documents folder and sync all attachments" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">🔄 Sync</button>
+
+    <!-- Reports dropdown -->
+    <div class="nav-dropdown" id="ddReports">
+      <button class="nav-dropdown-btn" onclick="toggleDropdown('ddReports')">📊 Reports <span class="dd-arrow">▾</span></button>
+      <div class="nav-dropdown-menu">
+        <button class="nav-dd-item" onclick="openReport();closeDropdowns()"><span class="dd-icon">📋</span> Pipeline Report</button>
+        <button class="nav-dd-item" onclick="openCashflow();closeDropdowns()"><span class="dd-icon">💵</span> Cashflow by SPV</button>
+        <button class="nav-dd-item" onclick="openClosings();closeDropdowns()"><span class="dd-icon">🗓</span> Closings Schedule</button>
+      </div>
+    </div>
+
+    <!-- Tools dropdown -->
+    <div class="nav-dropdown" id="ddTools">
+      <button class="nav-dropdown-btn" onclick="toggleDropdown('ddTools')">⚙️ Tools <span class="dd-arrow">▾</span></button>
+      <div class="nav-dropdown-menu">
+        <button class="nav-dd-item" onclick="setDataFolder();closeDropdowns()"><span class="dd-icon">☁️</span> Set Sync Folder</button>
+        <button class="nav-dd-item" onclick="setDocsFolder();closeDropdowns()"><span class="dd-icon">📁</span> Set Docs Folder</button>
+        <div class="nav-dd-divider"></div>
+        <button class="nav-dd-item" onclick="openBackups();closeDropdowns()"><span class="dd-icon">💾</span> Backups & Restore</button>
+      </div>
+    </div>
+
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
   </div>
 </nav>
@@ -1210,6 +1238,16 @@ function deleteDealConfirmed(){deals=deals.filter(d=>d.id!==editingId);saveDeals
 function setFilter(f){activeFilter=f;render();}
 function closeOverlay(id){document.getElementById(id).classList.remove('open');}
 function overlayClick(e,id){if(e.target===document.getElementById(id))closeOverlay(id);}
+
+// Nav dropdown menus
+function toggleDropdown(id){
+  const el=document.getElementById(id);
+  const wasOpen=el.classList.contains('open');
+  closeDropdowns();
+  if(!wasOpen) el.classList.add('open');
+}
+function closeDropdowns(){document.querySelectorAll('.nav-dropdown.open').forEach(el=>el.classList.remove('open'));}
+document.addEventListener('click',e=>{if(!e.target.closest('.nav-dropdown'))closeDropdowns();});
 
 // ── CONTRACT ANALYZER ─────────────────────────────────────────────────────────
 async function analyzeContract(){
