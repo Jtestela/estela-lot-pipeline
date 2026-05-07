@@ -825,9 +825,13 @@ function closePill(s){
   return`<span class="pill pill-blue">${fd(s)}</span>`;
 }
 function hasAlert(d){
+  if(d.stage==='Cancelled'||d.stage==='Closed / Purchased') return false;
+  // Escrow overdue and unpaid
   if(!d.escrowPaid&&d.escrow&&diff(d.escrow)<=0)return true;
-  if(d.dd&&diff(d.dd)<=0)return true;
-  if(d.close&&diff(d.close)>=0&&diff(d.close)<=3)return true;
+  // DD expired and still in DD/Under Contract stages
+  if(d.dd&&diff(d.dd)<=0&&(d.stage==='Due Diligences'||d.stage==='Under Contract (Escrow)'))return true;
+  // Close date overdue or within 3 days
+  if(d.close&&diff(d.close)<=3)return true;
   return false;
 }
 
@@ -1022,18 +1026,19 @@ function updateFolderHint(address){
 function render(){
   const scrollPos={};
   document.querySelectorAll('.stage-body[data-stage]').forEach(el=>{scrollPos[el.dataset.stage]=el.scrollTop;});
+  const active=deals.filter(d=>d.stage!=='Cancelled'&&d.stage!=='Closed / Purchased');
   const filtered=activeFilter==='All'?deals:deals.filter(d=>d.stage===activeFilter);
-  const total=deals.reduce((s,d)=>s+Number(d.amount),0);
-  const alertDeals=deals.filter(d=>d.stage!=='Cancelled'&&hasAlert(d));
-  const closingSoon=deals.filter(d=>d.stage!=='Cancelled'&&d.close&&diff(d.close)>=0&&diff(d.close)<=7);
-  const escrowPending=deals.filter(d=>d.stage!=='Cancelled'&&!d.escrowPaid&&d.escrow);
+  const total=active.reduce((s,d)=>s+Number(d.amount),0);
+  const alertDeals=active.filter(d=>hasAlert(d));
+  const closingSoon=active.filter(d=>d.close&&diff(d.close)<=7);
+  const escrowPending=active.filter(d=>!d.escrowPaid&&d.escrow);
 
   let html=`<div class="kpi-bar">
-    <div class="kpi-card"><div class="kpi-label">Active Deals</div><div class="kpi-value">${deals.length}</div><div class="kpi-sub">All stages</div></div>
+    <div class="kpi-card"><div class="kpi-label">Active Deals</div><div class="kpi-value">${active.length}</div><div class="kpi-sub">Excl. Closed & Cancelled</div></div>
     <div class="kpi-card orange"><div class="kpi-label">Total Pipeline</div><div class="kpi-value">$${(total/1e6).toFixed(2)}M</div><div class="kpi-sub">${fm(filtered.reduce((s,d)=>s+Number(d.amount),0))} shown</div></div>
-    <div class="kpi-card red"><div class="kpi-label">Needs Attention</div><div class="kpi-value">${alertDeals.length}</div><div class="kpi-sub">Active alerts</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Closing This Week</div><div class="kpi-value">${closingSoon.length}</div><div class="kpi-sub">Within 7 days</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Escrow Pending</div><div class="kpi-value">${escrowPending.length}</div><div class="kpi-sub">Outstanding</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Needs Attention</div><div class="kpi-value">${alertDeals.length}</div><div class="kpi-sub">Overdue or closing soon</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Closing Soon</div><div class="kpi-value">${closingSoon.length}</div><div class="kpi-sub">Overdue + next 7 days</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Escrow Pending</div><div class="kpi-value">${escrowPending.length}</div><div class="kpi-sub">Unpaid deposits</div></div>
   </div>`;
 
   if(alertDeals.length)html+=`<div class="alerts-bar"><div class="alert-strip"><span class="alert-title">🚨 Alerts:</span>${alertDeals.map(d=>`<span class="alert-item">${d.address.split(',')[0]}</span>`).join('<span class="alert-sep"> · </span>')}</div></div>`;
