@@ -270,11 +270,14 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
         <div class="form-group full"><label class="form-label">Property Address</label><input class="form-input" id="f_address" placeholder="e.g. 123 Main St, Palm Coast, FL 32137"/></div>
         <div class="form-group"><label class="form-label">Parcel ID</label><input class="form-input" id="f_parcel"/></div>
         <div class="form-group"><label class="form-label">Purchase Price ($)</label><input class="form-input" id="f_amount" type="number"/></div>
+        <div class="form-group"><label class="form-label">House Orientation</label>
+          <select class="form-select" id="f_orientation"><option value="">— Select —</option><option value="Left Hand">Left Hand</option><option value="Right Hand">Right Hand</option></select>
+        </div>
         <div class="form-group">
           <label class="form-label">Assigned SPV</label>
           <select class="form-select" id="f_spv" onchange="toggleCustomSpv(this)">
             <option value="">— Select SPV —</option>
-            <option>Estela Living LLC</option><option>Estela Specs 1 LLC</option><option>Estela Specs 2 LLC</option>
+            <option>Estela Living LLC</option><option>Estela Specs 1 LLC</option><option>Estela Specs 2 LLC</option><option>Estela Specs 3 LLC</option><option>Estela Specs 4 LLC</option>
             <option>Estela Specs 6 LLC</option><option>Estela Specs 7 LLC</option><option>Estela Specs 9 LLC</option>
             <option value="__custom__">Other…</option>
           </select>
@@ -420,7 +423,7 @@ const STAGES = [
   {key:'Closed / Purchased',    cls:'closed', hdr:'sh-closed', badge:'background:#CCFBF1;color:#0F766E'},
   {key:'Cancelled',             cls:'cancelled',hdr:'sh-cancelled',badge:'background:#F3F4F6;color:#6B7280'},
 ];
-const SPV_LIST = ['Estela Living LLC','Estela Specs 1 LLC','Estela Specs 2 LLC','Estela Specs 6 LLC','Estela Specs 7 LLC','Estela Specs 9 LLC'];
+const SPV_LIST = ['Estela Living LLC','Estela Specs 1 LLC','Estela Specs 2 LLC','Estela Specs 3 LLC','Estela Specs 4 LLC','Estela Specs 6 LLC','Estela Specs 7 LLC','Estela Specs 9 LLC'];
 // Document categories — each deal folder gets these subfolders, files are organized into them
 const DOC_CATEGORIES = [
   {key:'contract',  label:'Contract & Offer', folder:'01 Contract',       icon:'📄', color:'#DBEAFE', text:'#1D4ED8'},
@@ -1163,6 +1166,7 @@ function openEdit(id){
   document.getElementById('f_dd').value=d.dd||'';
   document.getElementById('f_notes').value=d.notes||'';
   document.getElementById('f_titleCompany').value=d.titleCompany||'';
+  document.getElementById('f_orientation').value=d.orientation||'';
   document.getElementById('f_mapLink').value=d.mapLink||'';
   updateMapBtn();
   document.getElementById('f_stage').value=d.stage||'Offer Letter';
@@ -1178,7 +1182,7 @@ function openEdit(id){
 function clearForm(){
   ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_mapLink'].forEach(id=>{document.getElementById(id).value='';});
   const mb=document.getElementById('f_mapBtn');if(mb){mb.style.display='none';mb.href='#';}
-  document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';
+  document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';document.getElementById('f_orientation').value='';
   document.getElementById('f_stage').value='Offer Letter';document.getElementById('f_spv_custom').style.display='none';
 }
 function toggleCustomSpv(el){document.getElementById('f_spv_custom').style.display=el.value==='__custom__'?'block':'none';}
@@ -1212,7 +1216,7 @@ function autoSaveIfEditing(){
       if(id==='f_mapLink') updateMapBtn();
     });
   });
-  ['f_spv','f_escrowPaid','f_stage'].forEach(id=>{
+  ['f_spv','f_escrowPaid','f_stage','f_orientation'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('change',()=>{
       autoSaveIfEditing();
@@ -1228,7 +1232,7 @@ function saveDeal(silent){
   const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
-  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
+  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();render();
   if(!silent){closeOverlay('editOverlay');showToast('Deal saved!','green');}
@@ -1901,7 +1905,7 @@ function buildClosingsHTML(){
   const upcoming = active.filter(d => diff(d.close) >= 0).sort((a,b) => pd(a.close) - pd(b.close));
 
   const spvColors = {
-    'Estela Living LLC':'#1D4ED8','Estela Specs 1 LLC':'#7C3AED','Estela Specs 2 LLC':'#0F766E',
+    'Estela Living LLC':'#1D4ED8','Estela Specs 1 LLC':'#7C3AED','Estela Specs 2 LLC':'#0F766E','Estela Specs 3 LLC':'#DC2626','Estela Specs 4 LLC':'#2563EB',
     'Estela Specs 6 LLC':'#B45309','Estela Specs 7 LLC':'#BE185D','Estela Specs 9 LLC':'#15803D',
   };
 
