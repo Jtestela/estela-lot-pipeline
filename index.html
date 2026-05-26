@@ -209,9 +209,20 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .cf-summary-card .cf-sum-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);font-weight:600;}
 .cf-summary-card .cf-sum-value{font-size:20px;font-weight:700;color:var(--text);margin-top:2px;}
 .cf-overdue-tag{color:var(--red-alert);font-weight:700;font-size:10px;}
+/* TITLE CONTACTS TABLE */
+.tc-table{width:100%;border-collapse:collapse;font-size:12px;}
+.tc-table th{background:#F8FAFC;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);padding:8px 10px;text-align:left;border-bottom:1.5px solid var(--gray-border);}
+.tc-table td{padding:8px 10px;border-bottom:1px solid #F1F3F5;vertical-align:middle;}
+.tc-table tr:hover td{background:#FAFBFC;}
+.tc-stage-hdr{padding:8px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--gray-border);margin-top:16px;display:flex;justify-content:space-between;align-items:center;}
+.tc-stage-hdr:first-child{margin-top:0;}
+.tc-stage-badge{font-size:12px;font-weight:700;color:var(--text);}
+.tc-link{color:var(--blue-mid);text-decoration:none;font-weight:600;}
+.tc-link:hover{text-decoration:underline;}
+.tc-missing{color:var(--text-light);font-style:italic;font-size:11px;}
 @media print{
   .navbar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
-  #reportOverlay.open,#cashflowOverlay.open,#closingsOverlay.open{position:static!important;background:none!important;display:block!important;}
+  #reportOverlay.open,#cashflowOverlay.open,#closingsOverlay.open,#titleContactsOverlay.open{position:static!important;background:none!important;display:block!important;}
   .modal{box-shadow:none!important;max-height:none!important;width:100%!important;border-radius:0!important;}
   .report-print-btn,.modal-footer,.modal-close{display:none!important;}
   .modal-header{border-radius:0!important;}
@@ -234,6 +245,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
         <button class="nav-dd-item" onclick="openReport();closeDropdowns()"><span class="dd-icon">📋</span> Pipeline Report</button>
         <button class="nav-dd-item" onclick="openCashflow();closeDropdowns()"><span class="dd-icon">💵</span> Cashflow by SPV</button>
         <button class="nav-dd-item" onclick="openClosings();closeDropdowns()"><span class="dd-icon">🗓</span> Closings Schedule</button>
+        <div class="nav-dd-divider"></div>
+        <button class="nav-dd-item" onclick="openTitleContacts();closeDropdowns()"><span class="dd-icon">📞</span> Title Contacts</button>
       </div>
     </div>
 
@@ -284,6 +297,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
           <input class="form-input" id="f_spv_custom" placeholder="Custom SPV name" style="display:none;margin-top:4px;"/>
         </div>
         <div class="form-group"><label class="form-label">Title Company</label><input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title"/></div>
+        <div class="form-group"><label class="form-label">Title Contact</label><input class="form-input" id="f_titleContact" placeholder="Contact name"/></div>
+        <div class="form-group"><label class="form-label">Title Phone</label><input class="form-input" id="f_titlePhone" placeholder="e.g. 352-555-1234" type="tel"/></div>
+        <div class="form-group"><label class="form-label">Title Email</label><input class="form-input" id="f_titleEmail" placeholder="e.g. closer@title.com" type="email"/></div>
         <div class="form-group"><label class="form-label">Stage</label>
           <select class="form-select" id="f_stage">
             <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Clear to Close</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
@@ -368,6 +384,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('closingsOverlay')">Close</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- TITLE CONTACTS VIEW -->
+<div class="overlay" id="titleContactsOverlay" onclick="overlayClick(event,'titleContactsOverlay')">
+  <div class="modal" style="width:900px;">
+    <div class="modal-header"><h2>📞 Title Company Contacts</h2><button class="modal-close" onclick="closeOverlay('titleContactsOverlay')">✕</button></div>
+    <div class="modal-body" id="titleContactsBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('titleContactsOverlay')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
     </div>
   </div>
 </div>
@@ -1166,6 +1194,9 @@ function openEdit(id){
   document.getElementById('f_dd').value=d.dd||'';
   document.getElementById('f_notes').value=d.notes||'';
   document.getElementById('f_titleCompany').value=d.titleCompany||'';
+  document.getElementById('f_titleContact').value=d.titleContact||'';
+  document.getElementById('f_titlePhone').value=d.titlePhone||'';
+  document.getElementById('f_titleEmail').value=d.titleEmail||'';
   document.getElementById('f_orientation').value=d.orientation||'';
   document.getElementById('f_mapLink').value=d.mapLink||'';
   updateMapBtn();
@@ -1180,7 +1211,7 @@ function openEdit(id){
 }
 
 function clearForm(){
-  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_mapLink'].forEach(id=>{document.getElementById(id).value='';});
+  ['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'].forEach(id=>{document.getElementById(id).value='';});
   const mb=document.getElementById('f_mapBtn');if(mb){mb.style.display='none';mb.href='#';}
   document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';document.getElementById('f_orientation').value='';
   document.getElementById('f_stage').value='Offer Letter';document.getElementById('f_spv_custom').style.display='none';
@@ -1208,7 +1239,7 @@ function autoSaveIfEditing(){
 }
 // Attach auto-save listeners once DOM is ready
 (function(){
-  const fields=['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_mapLink'];
+  const fields=['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'];
   fields.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('input',()=>{
@@ -1232,7 +1263,7 @@ function saveDeal(silent){
   const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
-  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
+  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();render();
   if(!silent){closeOverlay('editOverlay');showToast('Deal saved!','green');}
@@ -1976,6 +2007,71 @@ function buildClosingsHTML(){
       </table>` : '<div class="report-empty">No pending closings</div>'}
     </div>
   `;
+}
+
+// ── TITLE CONTACTS VIEW ─────────────────────────────────────────────────────
+function openTitleContacts(){
+  document.getElementById('titleContactsBody').innerHTML = buildTitleContactsHTML();
+  document.getElementById('titleContactsOverlay').classList.add('open');
+}
+
+function buildTitleContactsHTML(){
+  const dateStr = TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const targetStages = ['Under Contract (Escrow)','Due Diligences','Clear to Close'];
+  const filtered = deals.filter(d => targetStages.includes(d.stage));
+
+  if(!filtered.length) return '<div class="report-empty">No deals in Under Contract, Due Diligence, or Clear to Close stages.</div>';
+
+  // Group by stage in pipeline order
+  const stageColors = {'Under Contract (Escrow)':'#92400E','Due Diligences':'#991B1B','Clear to Close':'#5B21B6'};
+
+  let html = `
+    <div class="report-header-block">
+      <div class="report-title-block">
+        <div class="report-title">Title Company Contacts — Closing Follow-up</div>
+        <div class="report-subtitle">Generated ${dateStr} · ${filtered.length} deal${filtered.length!==1?'s':''} pending closing coordination</div>
+      </div>
+    </div>`;
+
+  targetStages.forEach(stage => {
+    const stageDeals = filtered.filter(d => d.stage === stage).sort((a,b) => {
+      if(a.close && b.close) return pd(a.close) - pd(b.close);
+      if(a.close) return -1;
+      if(b.close) return 1;
+      return 0;
+    });
+    if(!stageDeals.length) return;
+
+    const color = stageColors[stage] || '#6B7280';
+    html += `<div class="tc-stage-hdr" style="color:${color};border-color:${color}"><span>${stage}</span><span class="tc-stage-badge">${stageDeals.length} deal${stageDeals.length!==1?'s':''}</span></div>`;
+    html += `<table class="tc-table">
+      <thead><tr><th>Property</th><th>Close Date</th><th>Title Company</th><th>Contact</th><th>Phone</th><th>Email</th><th>Amount</th></tr></thead><tbody>`;
+
+    stageDeals.forEach(d => {
+      const addr = d.address.split(',')[0];
+      const closeDate = d.close ? `${fd(d.close)}` : '<span class="tc-missing">Not set</span>';
+      const closeDays = d.close ? diff(d.close) : null;
+      const closeTag = closeDays !== null ? (closeDays < 0 ? ` <span class="rt-alert">${Math.abs(closeDays)}d overdue</span>` : closeDays <= 7 ? ` <span class="rt-warn">${closeDays}d</span>` : '') : '';
+      const company = d.titleCompany || '<span class="tc-missing">Not set</span>';
+      const contact = d.titleContact || '<span class="tc-missing">—</span>';
+      const phone = d.titlePhone ? `<a class="tc-link" href="tel:${d.titlePhone}">${d.titlePhone}</a>` : '<span class="tc-missing">—</span>';
+      const email = d.titleEmail ? `<a class="tc-link" href="mailto:${d.titleEmail}">${d.titleEmail}</a>` : '<span class="tc-missing">—</span>';
+
+      html += `<tr>
+        <td><strong>${addr}</strong></td>
+        <td>${closeDate}${closeTag}</td>
+        <td>${company}</td>
+        <td>${contact}</td>
+        <td>${phone}</td>
+        <td>${email}</td>
+        <td>${fm(d.amount)}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+  });
+
+  return html;
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
