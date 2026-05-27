@@ -970,15 +970,29 @@ async function processAttachFile(file, categoryKey){
     const bar=document.getElementById('analyzeBar');
     if(bar)bar.style.display='block';
   }
+  // Re-request permission if handle exists but permission lapsed
+  if(docsFolderHandle){
+    try{
+      const perm=await docsFolderHandle.queryPermission({mode:'readwrite'});
+      if(perm!=='granted'){
+        const req=await docsFolderHandle.requestPermission({mode:'readwrite'});
+        if(req!=='granted'){showToast('⚠️ Folder permission denied — file not saved to disk.','red');}
+      }
+    }catch(e){}
+  }
+  if(!dealAddress){
+    showToast('⚠️ Enter a property address first so the file can be saved to the correct folder.','red');
+  }
   if(docsFolderHandle&&dealAddress){
     const att=await saveFileToFolder(dealAddress,file,cat);
-    if(att){pendingAttachments.push(att);renderAttachList();showToast('Saved to '+catByKey(cat).label+': '+file.name,'green');return;}
+    if(att){pendingAttachments.push(att);renderAttachList();showToast('✅ Saved to '+catByKey(cat).label+': '+file.name,'green');return;}
+    else{showToast('⚠️ Could not write file to folder — saved as reference only.','red');}
   }
   // Fallback: store reference only
   const folderName = dealAddress ? sanitize(dealAddress.split(',')[0]) : 'Unknown';
-  pendingAttachments.push({name:file.name,folder:folderName,category:cat,size:file.size,savedToFolder:false});
+  pendingAttachments.push({name:file.name,folder:folderName,category:cat,size:file.size,savedToFolder:false,_pendingFile:file});
   renderAttachList();
-  if(!docsFolderHandle) showToast('Tip: Set a Documents folder to auto-save files.');
+  if(!docsFolderHandle) showToast('⚠️ Set a Documents folder first (⚙️ Tools → Set Docs Folder) to save files to disk.','red');
 }
 
 function dragOver(e){e.preventDefault();e.currentTarget.classList.add('dragover');}
@@ -1256,7 +1270,7 @@ function autoSaveIfEditing(){
   });
 })();
 
-function saveDeal(silent){
+async function saveDeal(silent){
   const address=document.getElementById('f_address').value.trim();
   if(!address){alert('Property address is required.');return;}
   const spvEl=document.getElementById('f_spv').value;
@@ -1264,6 +1278,19 @@ function saveDeal(silent){
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
   const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
+  // Retry saving any unsaved files that have a pending File object
+  if(docsFolderHandle&&address){
+    for(let i=0;i<pendingAttachments.length;i++){
+      const att=pendingAttachments[i];
+      if(!att.savedToFolder&&att._pendingFile){
+        const saved=await saveFileToFolder(address,att._pendingFile,att.category||'other');
+        if(saved){pendingAttachments[i]=saved;}
+      }
+    }
+    // Clean up _pendingFile refs (not serializable)
+    pendingAttachments.forEach(a=>{delete a._pendingFile;});
+  }
+  deal.attachments=pendingAttachments;
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   saveDeals();render();
   if(!silent){closeOverlay('editOverlay');showToast('Deal saved!','green');}
