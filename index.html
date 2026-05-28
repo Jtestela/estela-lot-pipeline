@@ -2139,15 +2139,22 @@ fbRef.on('value', snapshot => {
   if(data && Array.isArray(data) && data.length > 0){
     if(!fbReady){
       // ── INITIAL SYNC ──
-      // If local was saved after last confirmed Firebase sync, local is newer — push it up.
+      // Firebase is the shared source of truth for multi-user access.
+      // Only push local over Firebase if local has MORE deals (offline edits).
+      // Never let a stale browser overwrite newer Firebase data.
+      const localCount = deals.length;
+      const fbCount = data.length;
       const savedAt = parseInt(localStorage.getItem(LS_KEY+'_savedAt')||'0');
       const fbSyncedAt = parseInt(localStorage.getItem(LS_KEY+'_fbSyncedAt')||'0');
-      if(savedAt > fbSyncedAt){
+      if(savedAt > fbSyncedAt && localCount > fbCount){
+        console.log('[fbListener] Initial sync: local has more deals (' + localCount + ' vs ' + fbCount + ') and is newer — pushing to Firebase');
         fbReady = true;
         saveDeals();
         updateSyncStatus('saved');
         return;
       }
+      // Otherwise, trust Firebase (more deals or same count = shared edits from other users)
+      console.log('[fbListener] Initial sync: accepting Firebase data (' + fbCount + ' deals, local had ' + localCount + ')');
     }
     // ── APPLY INCOMING CHANGES (initial sync + live updates from other users) ──
     const incoming = JSON.stringify(data);
