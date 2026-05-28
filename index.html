@@ -98,13 +98,43 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .modal-close{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;}
 .modal-body{padding:18px 20px;}
 .modal-footer{padding:12px 20px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--gray-border);}
+/* EDIT MODAL — wider layout */
+#editOverlay .modal{width:860px;}
+#editOverlay .modal-header{padding:14px 24px 10px;}
+#editOverlay .modal-body{padding:0 24px 18px;}
+#editOverlay .modal-footer{padding:10px 24px 14px;position:sticky;bottom:0;background:#fff;z-index:5;border-top:1.5px solid var(--gray-border);}
+/* Stage pill bar */
+.stage-bar{display:flex;flex-wrap:wrap;gap:6px;padding:14px 0 6px;}
+.stage-pill{padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .15s;opacity:.55;background:#F3F4F6;color:var(--text);}
+.stage-pill:hover{opacity:.8;}
+.stage-pill.active{opacity:1;border-color:currentColor;transform:scale(1.04);}
+.stage-pill[data-stage="Offer Letter"].active{background:#DBEAFE;color:#1D4ED8;}
+.stage-pill[data-stage="Under Contract (Escrow)"].active{background:#FEF3C7;color:#92400E;}
+.stage-pill[data-stage="Due Diligences"].active{background:#FEE2E2;color:#991B1B;}
+.stage-pill[data-stage="Clear to Close"].active{background:#EDE9FE;color:#5B21B6;}
+.stage-pill[data-stage="Permitting"].active{background:#DCFCE7;color:#166534;}
+.stage-pill[data-stage="Closed / Purchased"].active{background:#CCFBF1;color:#0F766E;}
+.stage-pill[data-stage="Cancelled"].active{background:#F3F4F6;color:#6B7280;opacity:.7;}
+/* Form sections */
+.form-section{background:#FAFBFC;border:1px solid #EEF0F3;border-radius:10px;padding:14px 16px;margin-top:14px;}
+.form-section-hd{display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;user-select:none;}
+.form-section-hd .sec-icon{font-size:16px;width:22px;text-align:center;}
+.form-section-hd .sec-title{font-size:13px;font-weight:700;color:var(--text);}
+.form-section-hd .sec-toggle{margin-left:auto;font-size:10px;color:var(--text-light);transition:transform .2s;}
+.form-section.collapsed .sec-toggle{transform:rotate(-90deg);}
+.form-section.collapsed .form-section-body{display:none;}
+.form-section-body{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+.form-section-body.cols-3{grid-template-columns:1fr 1fr 1fr;}
+/* Two-section row */
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+.form-row-2 .form-section{margin-top:0;}
 /* FORM */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .form-group{display:flex;flex-direction:column;gap:4px;}
 .form-group.full{grid-column:1/-1;}
 .form-label{font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px;}
-.form-input,.form-select,.form-textarea{border:1.5px solid var(--gray-border);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--text);width:100%;}
-.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--blue-mid);}
+.form-input,.form-select,.form-textarea{border:1.5px solid var(--gray-border);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--text);width:100%;background:#fff;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(46,117,182,.1);}
 .form-textarea{resize:vertical;min-height:60px;}
 .form-divider{grid-column:1/-1;border:none;border-top:1px solid var(--gray-border);margin:4px 0;}
 .btn{border:none;border-radius:6px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;}
@@ -220,6 +250,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .tc-link{color:var(--blue-mid);text-decoration:none;font-weight:600;}
 .tc-link:hover{text-decoration:underline;}
 .tc-missing{color:var(--text-light);font-style:italic;font-size:11px;}
+@media(max-width:900px){
+  #editOverlay .modal{width:96vw;}
+  .form-row-2{grid-template-columns:1fr;}
+  .stage-bar{gap:4px;}
+  .stage-pill{padding:5px 10px;font-size:10.5px;}
+}
 @media print{
   .navbar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
   #reportOverlay.open,#cashflowOverlay.open,#closingsOverlay.open,#titleContactsOverlay.open{position:static!important;background:none!important;display:block!important;}
@@ -270,70 +306,124 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 <!-- EDIT/ADD MODAL -->
 <div class="overlay" id="editOverlay" onclick="overlayClick(event,'editOverlay')">
   <div class="modal">
-    <div class="modal-header"><h2 id="editTitle">Add Deal</h2><button class="modal-close" onclick="closeOverlay('editOverlay')">✕</button></div>
+    <div class="modal-header"><h2 id="editTitle">Add Deal</h2><span id="autoSaveStatus" style="font-size:11px;color:#86EFAC;font-weight:600;display:none;margin-right:8px;">✓ Saved</span><button class="modal-close" onclick="closeOverlay('editOverlay')">✕</button></div>
     <div class="modal-body">
-      <div id="analyzeBar" style="display:none;margin-bottom:12px;">
+      <!-- CONTRACT ANALYZER BAR -->
+      <div id="analyzeBar" style="display:none;margin-top:14px;">
         <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div style="font-size:12px;color:#1D4ED8;">📄 <strong>Contract attached</strong> — auto-fill the form from this document?</div>
           <button class="btn btn-primary" id="btnAnalyze" onclick="analyzeContract()" style="font-size:11px;padding:6px 14px;white-space:nowrap;">🔍 Analyze &amp; Fill</button>
         </div>
         <div id="analyzeResult" style="display:none;margin-top:8px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:8px 12px;font-size:11px;color:#166534;"></div>
       </div>
-      <div class="form-grid">
-        <div class="form-group full"><label class="form-label">Property Address</label><input class="form-input" id="f_address" placeholder="e.g. 123 Main St, Palm Coast, FL 32137"/></div>
-        <div class="form-group"><label class="form-label">Parcel ID</label><input class="form-input" id="f_parcel"/></div>
-        <div class="form-group"><label class="form-label">Purchase Price ($)</label><input class="form-input" id="f_amount" type="number"/></div>
-        <div class="form-group"><label class="form-label">House Orientation</label>
-          <select class="form-select" id="f_orientation"><option value="">— Select —</option><option value="Left Hand">Left Hand</option><option value="Right Hand">Right Hand</option></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Assigned SPV</label>
-          <select class="form-select" id="f_spv" onchange="toggleCustomSpv(this)">
-            <option value="">— Select SPV —</option>
-            <option>Estela Living LLC</option><option>Estela Specs 1 LLC</option><option>Estela Specs 2 LLC</option><option>Estela Specs 3 LLC</option><option>Estela Specs 4 LLC</option>
-            <option>Estela Specs 6 LLC</option><option>Estela Specs 7 LLC</option><option>Estela Specs 9 LLC</option>
-            <option value="__custom__">Other…</option>
-          </select>
-          <input class="form-input" id="f_spv_custom" placeholder="Custom SPV name" style="display:none;margin-top:4px;"/>
-        </div>
-        <div class="form-group"><label class="form-label">Title Company</label><input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title"/></div>
-        <div class="form-group"><label class="form-label">Title Contact</label><input class="form-input" id="f_titleContact" placeholder="Contact name"/></div>
-        <div class="form-group"><label class="form-label">Title Phone</label><input class="form-input" id="f_titlePhone" placeholder="e.g. 352-555-1234" type="tel"/></div>
-        <div class="form-group"><label class="form-label">Title Email</label><input class="form-input" id="f_titleEmail" placeholder="e.g. closer@title.com" type="email"/></div>
-        <div class="form-group"><label class="form-label">Stage</label>
-          <select class="form-select" id="f_stage">
-            <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Clear to Close</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">Close Date</label><input class="form-input" id="f_close" type="date"/></div>
-        <hr class="form-divider"/>
-        <div class="form-group"><label class="form-label">Escrow Due Date</label><input class="form-input" id="f_escrow" type="date"/></div>
-        <div class="form-group"><label class="form-label">Escrow Status</label>
-          <select class="form-select" id="f_escrowPaid"><option value="false">Pending</option><option value="true">Paid ✓</option></select>
-        </div>
-        <div class="form-group"><label class="form-label">DD Due Date</label><input class="form-input" id="f_dd" type="date"/></div>
-        <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f_notes"></textarea></div>
-        <div class="form-group full"><label class="form-label">📍 Google Maps Link</label><div style="display:flex;gap:6px;align-items:center;"><input class="form-input" id="f_mapLink" placeholder="Paste Google Maps URL" style="flex:1;"/><a id="f_mapBtn" href="#" target="_blank" rel="noopener" style="display:none;background:var(--blue-dark);color:#fff;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">🗺 Open Map</a></div></div>
+
+      <!-- STAGE SELECTOR — prominent pill bar -->
+      <div class="stage-bar" id="stagePillBar">
+        <span class="stage-pill" data-stage="Offer Letter" onclick="pickStage(this)">Offer Letter</span>
+        <span class="stage-pill" data-stage="Under Contract (Escrow)" onclick="pickStage(this)">Under Contract</span>
+        <span class="stage-pill" data-stage="Due Diligences" onclick="pickStage(this)">Due Diligence</span>
+        <span class="stage-pill" data-stage="Clear to Close" onclick="pickStage(this)">Clear to Close</span>
+        <span class="stage-pill" data-stage="Permitting" onclick="pickStage(this)">Permitting</span>
+        <span class="stage-pill" data-stage="Closed / Purchased" onclick="pickStage(this)">Closed</span>
+        <span class="stage-pill" data-stage="Cancelled" onclick="pickStage(this)">Cancelled</span>
       </div>
-      <!-- ATTACHMENTS -->
-      <div class="attach-section">
-        <div class="attach-header">
-          <div><div class="attach-title">📎 Documents</div><div class="attach-subtitle" id="attachSubtitle">Drop files into the category that fits — drag between categories to re-organize</div></div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <select class="form-select" id="attachCatPick" onchange="pendingCategoryPick=this.value" style="font-size:11px;padding:5px 8px;">
-              ${''/* options injected by JS on modal open */}
+      <!-- Hidden select keeps saveDeal() working unchanged -->
+      <select class="form-select" id="f_stage" style="display:none;">
+        <option>Offer Letter</option><option>Under Contract (Escrow)</option><option>Due Diligences</option><option>Clear to Close</option><option>Permitting</option><option>Closed / Purchased</option><option>Cancelled</option>
+      </select>
+
+      <!-- SECTION: Property Info -->
+      <div class="form-section" id="secProperty">
+        <div class="form-section-hd" onclick="toggleSection('secProperty')">
+          <span class="sec-icon">🏠</span><span class="sec-title">Property Details</span><span class="sec-toggle">▾</span>
+        </div>
+        <div class="form-section-body">
+          <div class="form-group full"><label class="form-label">Address</label><input class="form-input" id="f_address" placeholder="e.g. 123 Main St, Palm Coast, FL 32137"/></div>
+          <div class="form-group"><label class="form-label">Parcel ID</label><input class="form-input" id="f_parcel"/></div>
+          <div class="form-group"><label class="form-label">Purchase Price ($)</label><input class="form-input" id="f_amount" type="number"/></div>
+          <div class="form-group"><label class="form-label">Orientation</label>
+            <select class="form-select" id="f_orientation"><option value="">— Select —</option><option value="Left Hand">Left Hand</option><option value="Right Hand">Right Hand</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Assigned SPV</label>
+            <select class="form-select" id="f_spv" onchange="toggleCustomSpv(this)">
+              <option value="">— Select SPV —</option>
+              <option>Estela Living LLC</option><option>Estela Specs 1 LLC</option><option>Estela Specs 2 LLC</option><option>Estela Specs 3 LLC</option><option>Estela Specs 4 LLC</option>
+              <option>Estela Specs 6 LLC</option><option>Estela Specs 7 LLC</option><option>Estela Specs 9 LLC</option>
+              <option value="__custom__">Other…</option>
             </select>
-            <button class="btn-attach" onclick="attachFile()" id="btnAttach">+ Attach File</button>
+            <input class="form-input" id="f_spv_custom" placeholder="Custom SPV name" style="display:none;margin-top:4px;"/>
+          </div>
+          <div class="form-group full"><label class="form-label">📍 Google Maps Link</label><div style="display:flex;gap:6px;align-items:center;"><input class="form-input" id="f_mapLink" placeholder="Paste Google Maps URL" style="flex:1;"/><a id="f_mapBtn" href="#" target="_blank" rel="noopener" style="display:none;background:var(--blue-dark);color:#fff;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">🗺 Open Map</a></div></div>
+        </div>
+      </div>
+
+      <!-- ROW: Title Company + Dates side by side -->
+      <div class="form-row-2">
+        <!-- SECTION: Title Company -->
+        <div class="form-section" id="secTitle">
+          <div class="form-section-hd" onclick="toggleSection('secTitle')">
+            <span class="sec-icon">🏢</span><span class="sec-title">Title Company</span><span class="sec-toggle">▾</span>
+          </div>
+          <div class="form-section-body">
+            <div class="form-group full"><label class="form-label">Company</label><input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title"/></div>
+            <div class="form-group full"><label class="form-label">Contact Name</label><input class="form-input" id="f_titleContact" placeholder="Contact name"/></div>
+            <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="f_titlePhone" placeholder="352-555-1234" type="tel"/></div>
+            <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="f_titleEmail" placeholder="closer@title.com" type="email"/></div>
           </div>
         </div>
-        <div id="attachFolderHint"></div>
-        <div class="attach-list" id="attachList"></div>
+
+        <!-- SECTION: Dates & Status -->
+        <div class="form-section" id="secDates">
+          <div class="form-section-hd" onclick="toggleSection('secDates')">
+            <span class="sec-icon">📅</span><span class="sec-title">Dates & Status</span><span class="sec-toggle">▾</span>
+          </div>
+          <div class="form-section-body">
+            <div class="form-group full"><label class="form-label">Close Date</label><input class="form-input" id="f_close" type="date"/></div>
+            <div class="form-group"><label class="form-label">Escrow Due</label><input class="form-input" id="f_escrow" type="date"/></div>
+            <div class="form-group"><label class="form-label">Escrow Status</label>
+              <select class="form-select" id="f_escrowPaid"><option value="false">Pending</option><option value="true">Paid ✓</option></select>
+            </div>
+            <div class="form-group full"><label class="form-label">DD Due Date</label><input class="form-input" id="f_dd" type="date"/></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Notes -->
+      <div class="form-section" id="secNotes">
+        <div class="form-section-hd" onclick="toggleSection('secNotes')">
+          <span class="sec-icon">📝</span><span class="sec-title">Notes</span><span class="sec-toggle">▾</span>
+        </div>
+        <div class="form-section-body">
+          <div class="form-group full"><textarea class="form-textarea" id="f_notes" placeholder="Add notes about this deal..." style="min-height:70px;"></textarea></div>
+        </div>
+      </div>
+
+      <!-- SECTION: Documents (collapsible) -->
+      <div class="form-section" id="secDocs" style="background:#fff;">
+        <div class="form-section-hd" onclick="toggleSection('secDocs')">
+          <span class="sec-icon">📎</span><span class="sec-title">Documents</span>
+          <span id="attachCountBadge" style="background:var(--blue-light);color:var(--blue-mid);border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;margin-left:4px;">0</span>
+          <span class="sec-toggle">▾</span>
+        </div>
+        <div class="form-section-body" style="display:block;">
+          <div class="attach-header" style="margin-bottom:8px;">
+            <div><div class="attach-subtitle" id="attachSubtitle">Drop files into the category that fits</div></div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <select class="form-select" id="attachCatPick" onchange="pendingCategoryPick=this.value" style="font-size:11px;padding:5px 8px;">
+                ${''/* options injected by JS on modal open */}
+              </select>
+              <button class="btn-attach" onclick="attachFile()" id="btnAttach">+ Attach</button>
+            </div>
+          </div>
+          <div id="attachFolderHint"></div>
+          <div class="attach-list" id="attachList"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="btnCancel" onclick="closeOverlay('editOverlay')">Cancel</button>
       <button class="btn btn-danger" id="btnDelete" onclick="confirmDelete()" style="display:none;font-size:11px;padding:8px 12px;">🗑 Delete</button>
-      <span id="autoSaveStatus" style="font-size:11px;color:var(--green-ok);font-weight:600;display:none;">✓ Auto-saved</span>
       <button class="btn btn-primary" id="btnSave" onclick="saveDeal()">Save Deal</button>
       <button class="btn btn-primary" id="btnDone" onclick="closeOverlay('editOverlay')" style="display:none;">Done</button>
     </div>
@@ -1023,6 +1113,7 @@ function attachDragStart(e, i){
 function renderAttachList(){
   const el=document.getElementById('attachList');
   if(!el)return;
+  updateAttachBadge();
   // Group pending attachments by category
   const grouped={}; DOC_CATEGORIES.forEach(c=>grouped[c.key]=[]);
   pendingAttachments.forEach((a,i)=>{ grouped[attCat(a)] = grouped[attCat(a)]||[]; grouped[attCat(a)].push({a,i}); });
@@ -1167,6 +1258,26 @@ function openDetail(id){
 }
 async function openDetailAtt(did,i){const d=deals.find(x=>x.id===did);if(!d)return;await openSavedFile((d.attachments||[])[i]);}
 
+// ── STAGE PILLS & SECTION TOGGLE ──────────────────────────────────────────────
+function pickStage(el){
+  document.querySelectorAll('.stage-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('f_stage').value=el.dataset.stage;
+  autoSaveIfEditing();
+}
+function syncStagePills(stage){
+  document.querySelectorAll('.stage-pill').forEach(p=>{
+    p.classList.toggle('active', p.dataset.stage===stage);
+  });
+}
+function toggleSection(id){
+  document.getElementById(id).classList.toggle('collapsed');
+}
+function updateAttachBadge(){
+  const b=document.getElementById('attachCountBadge');
+  if(b) b.textContent=pendingAttachments.length;
+}
+
 // ── EDIT / ADD ────────────────────────────────────────────────────────────────
 function populateCatPicker(){
   const sel=document.getElementById('attachCatPick');
@@ -1184,9 +1295,11 @@ function openAddDeal(){
   document.getElementById('autoSaveStatus').style.display='none';
   const bar=document.getElementById('analyzeBar');if(bar){bar.style.display='none';}
   const res=document.getElementById('analyzeResult');if(res){res.style.display='none';}
-  clearForm();updateFolderHint('');populateCatPicker();
+  clearForm();syncStagePills('Offer Letter');updateAttachBadge();updateFolderHint('');populateCatPicker();
   const p=document.getElementById('attachCatPick'); if(p)p.value=pendingCategoryPick;
   renderAttachList();
+  // Expand all sections for new deal
+  ['secProperty','secTitle','secDates','secNotes','secDocs'].forEach(s=>{document.getElementById(s).classList.remove('collapsed');});
   document.getElementById('editOverlay').classList.add('open');
 }
 
@@ -1215,8 +1328,10 @@ function openEdit(id){
   document.getElementById('f_mapLink').value=d.mapLink||'';
   updateMapBtn();
   document.getElementById('f_stage').value=d.stage||'Offer Letter';
+  syncStagePills(d.stage||'Offer Letter');
   if(SPV_LIST.includes(d.spv)){document.getElementById('f_spv').value=d.spv;document.getElementById('f_spv_custom').style.display='none';}
   else{document.getElementById('f_spv').value='__custom__';document.getElementById('f_spv_custom').style.display='block';document.getElementById('f_spv_custom').value=d.spv||'';}
+  updateAttachBadge();
   pendingCategoryPick='other';
   updateFolderHint(d.address);populateCatPicker();
   const p=document.getElementById('attachCatPick'); if(p)p.value=pendingCategoryPick;
