@@ -1300,10 +1300,28 @@ async function saveDeal(silent){
 }
 
 function confirmDelete(){const d=deals.find(x=>x.id===editingId);if(!d)return;document.getElementById('confirmName').textContent=d.address;document.getElementById('confirmOverlay').classList.add('open');}
-function deleteDealConfirmed(){deals=deals.filter(d=>d.id!==editingId);saveDeals();closeOverlay('confirmOverlay');closeOverlay('editOverlay');render();showToast('Deal deleted.');}
+function deleteDealConfirmed(){deals=deals.filter(d=>d.id!==editingId);editingId=null;window._pendingFbData=null;saveDeals();closeOverlay('confirmOverlay');closeOverlay('editOverlay');render();showToast('Deal deleted.');}
 
 function setFilter(f){activeFilter=f;render();}
-function closeOverlay(id){document.getElementById(id).classList.remove('open');}
+function closeOverlay(id){
+  document.getElementById(id).classList.remove('open');
+  // When the edit modal closes, clear editingId and apply any queued Firebase updates
+  if(id==='editOverlay' && editingId){
+    editingId=null;
+    if(window._pendingFbData){
+      console.log('[closeOverlay] Applying deferred Firebase data');
+      const data = window._pendingFbData;
+      window._pendingFbData = null;
+      if(dataFolderHandle && fbReady){ snapshotDeals('pre-fb-overwrite'); }
+      deals = data;
+      nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+      dealsFromDefaults = false;
+      localStorage.setItem(LS_KEY, JSON.stringify(deals));
+      render();
+      showToast('🔄 Updated from another device','green');
+    }
+  }
+}
 function overlayClick(e,id){if(e.target===document.getElementById(id))closeOverlay(id);}
 
 // Nav dropdown menus
@@ -2109,43 +2127,53 @@ document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
 // ── FIREBASE REAL-TIME LISTENER ───────────────────────────────────────────────
-// On first connect: load Firebase data if it's newer than local.
-// After initial load (fbReady = true): local is always authoritative — never overwrite from Firebase.
+// Keeps listening for changes so multiple users/devices stay in sync.
+// _pendingWrite flag prevents echo loops from our own writes.
 fbRef.on('value', snapshot => {
   if(_pendingWrite) return; // our own write echoing back — ignore
-  if(fbReady) return;       // initial sync done — local wins from here on
+
   let data = snapshot.val();
   // Firebase can return an object with numeric keys — convert to array if needed
   if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
+
   if(data && Array.isArray(data) && data.length > 0){
-    // If local was saved after last confirmed Firebase sync, local is newer — push it up.
-    const savedAt = parseInt(localStorage.getItem(LS_KEY+'_savedAt')||'0');
-    const fbSyncedAt = parseInt(localStorage.getItem(LS_KEY+'_fbSyncedAt')||'0');
-    if(savedAt > fbSyncedAt){
-      fbReady = true;
-      saveDeals();
-      updateSyncStatus('saved');
-      return;
+    if(!fbReady){
+      // ── INITIAL SYNC ──
+      // If local was saved after last confirmed Firebase sync, local is newer — push it up.
+      const savedAt = parseInt(localStorage.getItem(LS_KEY+'_savedAt')||'0');
+      const fbSyncedAt = parseInt(localStorage.getItem(LS_KEY+'_fbSyncedAt')||'0');
+      if(savedAt > fbSyncedAt){
+        fbReady = true;
+        saveDeals();
+        updateSyncStatus('saved');
+        return;
+      }
     }
+    // ── APPLY INCOMING CHANGES (initial sync + live updates from other users) ──
     const incoming = JSON.stringify(data);
     if(incoming !== JSON.stringify(deals)){
-      // 🛡 Safety snapshot BEFORE we let Firebase overwrite in-memory state.
-      // If this replacement turns out to be bad, user can restore from the Backups modal.
-      if(dataFolderHandle){ snapshotDeals('pre-fb-overwrite'); }
-      deals = data;
-      nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
-      dealsFromDefaults = false;
-      localStorage.setItem(LS_KEY, JSON.stringify(deals));
-      render();
+      // Don't overwrite if user is currently editing a deal in the modal
+      if(editingId){
+        console.log('[fbListener] Incoming change deferred — user is editing deal', editingId);
+        // Queue the update to apply when modal closes
+        window._pendingFbData = data;
+      } else {
+        if(dataFolderHandle && fbReady){ snapshotDeals('pre-fb-overwrite'); }
+        deals = data;
+        nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+        dealsFromDefaults = false;
+        localStorage.setItem(LS_KEY, JSON.stringify(deals));
+        render();
+        if(fbReady) showToast('🔄 Updated from another device','green');
+      }
     }
     fbReady = true;
     updateSyncStatus('saved');
   } else {
-    // Firebase returned empty/null. This could be a legitimate first-time setup OR a transient read
-    // failure. Only push local data up if we have REAL local data (not just the hardcoded DEFAULTS).
+    // Firebase returned empty/null.
     fbReady = true;
     if(dealsFromDefaults && dealsEqualDefaults()){
-      console.warn('[fbListener] Firebase empty AND local is just DEFAULTS — refusing to write. This prevents a DEFAULTS-overwrite race.');
+      console.warn('[fbListener] Firebase empty AND local is just DEFAULTS — refusing to write.');
       updateSyncStatus('error');
     } else {
       saveDeals();
