@@ -59,6 +59,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .stage-header{border-radius:10px 10px 0 0;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;}
 .stage-title{font-size:12px;font-weight:700;color:#fff;}.stage-badge{background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;}
 .stage-total{font-size:11px;color:rgba(255,255,255,.8);}
+.sort-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:4px;color:#fff;font-size:9.5px;font-weight:600;padding:2px 6px;cursor:pointer;white-space:nowrap;margin-left:6px;}
+.sort-btn:hover{background:rgba(255,255,255,.35);}
+.card-stage-date{font-size:9.5px;color:var(--text-light);margin-top:3px;font-style:italic;}
+.history-item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #F1F3F5;}
+.history-item:last-child{border-bottom:none;}
+.history-dot{width:10px;height:10px;border-radius:50%;background:var(--blue-mid);margin-top:3px;flex-shrink:0;}
+.history-date{font-size:11px;color:var(--text-light);min-width:110px;flex-shrink:0;}
+.history-label{font-size:12px;font-weight:600;color:var(--text);}
+.history-from{font-size:10px;color:var(--text-light);}
 .stage-body{background:#fff;border:1.5px solid var(--gray-border);border-top:none;border-radius:0 0 10px 10px;padding:8px;display:flex;flex-direction:column;gap:7px;min-height:60px;box-shadow:0 2px 8px rgba(0,0,0,.05);max-height:calc(100vh - 255px);overflow-y:auto;}
 .sh-offer{background:var(--blue-mid);}.sh-escrow{background:var(--orange);}.sh-dd{background:var(--red-dark);}.sh-ctc{background:#7C3AED;}.sh-permit{background:var(--green-dark);}.sh-closed{background:var(--teal-dark);}.sh-cancelled{background:#6B7280;}
 /* CARD */
@@ -399,6 +408,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
         </div>
       </div>
 
+      <!-- SECTION: Stage History (edit only) -->
+      <div class="form-section" id="secHistory" style="display:none;background:#fff;">
+        <div class="form-section-hd" onclick="toggleSection('secHistory')">
+          <span class="sec-icon">🕐</span><span class="sec-title">Stage History</span><span class="sec-toggle">▾</span>
+        </div>
+        <div class="form-section-body" style="display:block;">
+          <div id="stageHistoryList" style="font-size:12px;"></div>
+        </div>
+      </div>
+
       <!-- SECTION: Documents (collapsible) -->
       <div class="form-section" id="secDocs" style="background:#fff;">
         <div class="form-section-hd" onclick="toggleSection('secDocs')">
@@ -586,6 +605,9 @@ let nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
 let docsFolderHandle = null;
 let dataFolderHandle = null;
 let _pendingWrite = false;
+// Column sort state: { 'Stage Name': 'close'|'price'|'address'|'entered' }
+const SORT_OPTIONS = [{key:'close',label:'Close Date'},{key:'price',label:'Price'},{key:'address',label:'Address'},{key:'entered',label:'Date Entered'}];
+let columnSort = JSON.parse(localStorage.getItem(LS_KEY+'_colSort')||'{}');
 
 function loadDeals(){
   try{
@@ -1159,6 +1181,76 @@ function updateFolderHint(address){
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
+// ── STAGE HISTORY HELPERS ─────────────────────────────────────────────────────
+function recordStageChange(deal, newStage, oldStage){
+  if(!deal.stageHistory) deal.stageHistory=[];
+  deal.stageHistory.push({stage:newStage, from:oldStage||'', date:new Date().toISOString()});
+}
+function getStageEnteredDate(deal){
+  if(!deal.stageHistory||!deal.stageHistory.length) return null;
+  // Find the most recent entry for the current stage
+  for(let i=deal.stageHistory.length-1;i>=0;i--){
+    if(deal.stageHistory[i].stage===deal.stage) return deal.stageHistory[i].date;
+  }
+  return null;
+}
+function formatStageDate(iso){
+  if(!iso) return '';
+  const d=new Date(iso);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function renderStageHistory(deal){
+  const sec=document.getElementById('secHistory');
+  const el=document.getElementById('stageHistoryList');
+  if(!sec||!el) return;
+  const history=deal.stageHistory||[];
+  if(!history.length){sec.style.display='none';return;}
+  sec.style.display='';
+  el.innerHTML=history.slice().reverse().map(h=>{
+    const dt=new Date(h.date);
+    const dateStr=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr=dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return `<div class="history-item">
+      <div class="history-dot"></div>
+      <div class="history-date">${dateStr}<br>${timeStr}</div>
+      <div><div class="history-label">${h.stage}</div>${h.from?`<div class="history-from">from ${h.from}</div>`:`<div class="history-from">Deal created</div>`}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── COLUMN SORTING ───────────────────────────────────────────────────────────
+function cycleSort(stageName){
+  const cur=columnSort[stageName]||'close';
+  const idx=SORT_OPTIONS.findIndex(o=>o.key===cur);
+  const next=SORT_OPTIONS[(idx+1)%SORT_OPTIONS.length].key;
+  columnSort[stageName]=next;
+  localStorage.setItem(LS_KEY+'_colSort', JSON.stringify(columnSort));
+  render();
+}
+function sortDeals(list, sortKey){
+  const s=[...list];
+  switch(sortKey){
+    case 'price': s.sort((a,b)=>(Number(b.amount)||0)-(Number(a.amount)||0)); break;
+    case 'address': s.sort((a,b)=>(a.address||'').localeCompare(b.address||'')); break;
+    case 'entered': s.sort((a,b)=>{
+      const da=getStageEnteredDate(a)||'9999';
+      const db=getStageEnteredDate(b)||'9999';
+      return da<db?-1:da>db?1:0;
+    }); break;
+    default: /* close date */ s.sort((a,b)=>{
+      const da=a.close||'9999-12-31';
+      const db=b.close||'9999-12-31';
+      return da<db?-1:da>db?1:0;
+    });
+  }
+  return s;
+}
+function sortLabel(stageName){
+  const key=columnSort[stageName]||'close';
+  const opt=SORT_OPTIONS.find(o=>o.key===key);
+  return opt?opt.label:'Close Date';
+}
+
 function render(){
   const scrollPos={};
   document.querySelectorAll('.stage-body[data-stage]').forEach(el=>{scrollPos[el.dataset.stage]=el.scrollTop;});
@@ -1185,9 +1277,9 @@ function render(){
   </div><div class="board">`;
 
   STAGES.forEach(s=>{
-    const sd=filtered.filter(d=>d.stage===s.key);
+    const sd=sortDeals(filtered.filter(d=>d.stage===s.key), columnSort[s.key]||'close');
     const sv=sd.reduce((sum,d)=>sum+Number(d.amount),0);
-    html+=`<div class="stage-col"><div class="stage-header ${s.hdr}"><div><div class="stage-title">${s.key}</div><div class="stage-total">${fm(sv)}</div></div><div class="stage-badge">${sd.length}</div></div>
+    html+=`<div class="stage-col"><div class="stage-header ${s.hdr}"><div><div class="stage-title">${s.key}</div><div class="stage-total">${fm(sv)}</div></div><div style="display:flex;align-items:center;gap:4px;"><button class="sort-btn" onclick="event.stopPropagation();cycleSort('${s.key}')" title="Sort by: ${sortLabel(s.key)}">↕ ${sortLabel(s.key)}</button><div class="stage-badge">${sd.length}</div></div></div>
     <div class="stage-body" data-stage="${s.key}" ondragover="colDragOver(event,this)" ondragleave="colDragLeave(this)" ondrop="colDrop(event,'${s.key}')">${sd.length?sd.map(d=>renderCard(d,s)).join(''):'<div class="empty-col">No deals</div>'}</div></div>`;
   });
   html+='</div>';
@@ -1213,7 +1305,7 @@ function renderCard(d,s){
     <div class="card-checks">
       <label class="card-check-label ${d.lotWalkthrough?'checked':''}" onclick="event.stopPropagation()"><input type="checkbox" ${d.lotWalkthrough?'checked':''} onchange="toggleCheck(event,${d.id},'lotWalkthrough')"> Lot Walkthrough</label>
       <label class="card-check-label ${d.managerApproval?'checked':'not-approved'}" onclick="event.stopPropagation()"><input type="checkbox" ${d.managerApproval?'checked':''} onchange="toggleCheck(event,${d.id},'managerApproval')"> ${d.managerApproval?'Approved':'Not Approved'}</label>
-    </div></div>`;
+    </div>${getStageEnteredDate(d)?`<div class="card-stage-date">Entered: ${formatStageDate(getStageEnteredDate(d))}</div>`:''}</div>`;
 }
 
 // ── DETAIL ────────────────────────────────────────────────────────────────────
@@ -1298,8 +1390,9 @@ function openAddDeal(){
   clearForm();syncStagePills('Offer Letter');updateAttachBadge();updateFolderHint('');populateCatPicker();
   const p=document.getElementById('attachCatPick'); if(p)p.value=pendingCategoryPick;
   renderAttachList();
-  // Expand all sections for new deal
+  // Expand all sections for new deal, hide history
   ['secProperty','secTitle','secDates','secNotes','secDocs'].forEach(s=>{document.getElementById(s).classList.remove('collapsed');});
+  document.getElementById('secHistory').style.display='none';
   document.getElementById('editOverlay').classList.add('open');
 }
 
@@ -1336,6 +1429,8 @@ function openEdit(id){
   updateFolderHint(d.address);populateCatPicker();
   const p=document.getElementById('attachCatPick'); if(p)p.value=pendingCategoryPick;
   renderAttachList();
+  renderStageHistory(d);
+  ['secProperty','secTitle','secDates','secNotes','secDocs'].forEach(s=>{document.getElementById(s).classList.remove('collapsed');});
   document.getElementById('editOverlay').classList.add('open');
 }
 
@@ -1392,7 +1487,16 @@ async function saveDeal(silent){
   const spv=spvEl==='__custom__'?document.getElementById('f_spv_custom').value.trim():spvEl;
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
-  const deal={id:editingId||nextId++,stage:document.getElementById('f_stage').value,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,_patchedTo:PATCH_VERSION};
+  const newStage=document.getElementById('f_stage').value;
+  const deal={id:editingId||nextId++,stage:newStage,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,stageHistory:existing?JSON.parse(JSON.stringify(existing.stageHistory||[])):[],_patchedTo:PATCH_VERSION};
+  // Record stage change timestamp
+  if(!existing){
+    // New deal — record initial stage
+    recordStageChange(deal, newStage, '');
+  } else if(oldStage!==newStage){
+    // Stage changed — record transition
+    recordStageChange(deal, newStage, oldStage);
+  }
   // Retry saving any unsaved files that have a pending File object
   if(docsFolderHandle&&address){
     for(let i=0;i<pendingAttachments.length;i++){
@@ -1786,6 +1890,7 @@ function colDrop(e,stageName){
   const oldStage=deal.stage;
   deal.stage=stageName;
   deal._patchedTo=PATCH_VERSION;
+  recordStageChange(deal, stageName, oldStage);
   saveDeals();
   render();
   showToast(`Moved to ${stageName} ✓`,'green');
