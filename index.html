@@ -62,6 +62,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .sort-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:4px;color:#fff;font-size:9.5px;font-weight:600;padding:2px 6px;cursor:pointer;white-space:nowrap;margin-left:6px;}
 .sort-btn:hover{background:rgba(255,255,255,.35);}
 .card-stage-date{font-size:9.5px;color:var(--text-light);margin-top:3px;font-style:italic;}
+.card-ms{font-size:9.5px;font-weight:700;color:var(--blue-mid);background:var(--blue-light);border-radius:3px;padding:1px 5px;display:inline-block;margin-bottom:2px;}
+.ms-house-row{display:flex;align-items:center;gap:8px;margin-top:2px;}
+.ms-house-display{font-size:15px;font-weight:800;color:var(--blue-dark);letter-spacing:.5px;}
+.ms-house-dev{font-size:11px;color:var(--text-light);font-weight:600;}
+.btn-assign-ms{background:var(--blue-mid);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;}
+.btn-assign-ms:hover{opacity:.85;}
+.btn-assign-ms:disabled{opacity:.5;cursor:not-allowed;}
 .history-item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #F1F3F5;}
 .history-item:last-child{border-bottom:none;}
 .history-dot{width:10px;height:10px;border-radius:50%;background:var(--blue-mid);margin-top:3px;flex-shrink:0;}
@@ -363,6 +370,22 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
             </select>
             <input class="form-input" id="f_spv_custom" placeholder="Custom SPV name" style="display:none;margin-top:4px;"/>
           </div>
+          <div class="form-group">
+            <label class="form-label">Development</label>
+            <select class="form-select" id="f_development" onchange="autoSaveIfEditing()">
+              <option value="">— Auto-detect —</option>
+              <option value="002">Marion Oaks (002)</option>
+              <option value="003">Ocala Waterways (003)</option>
+              <option value="004">Palm Coast (004)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">MS House #</label>
+            <div class="ms-house-row">
+              <span class="ms-house-display" id="f_msHouseDisplay">—</span>
+              <button type="button" class="btn-assign-ms" id="btnAssignMs" onclick="event.stopPropagation();assignMsHouse()">Assign #</button>
+            </div>
+          </div>
           <div class="form-group full"><label class="form-label">📍 Google Maps Link</label><div style="display:flex;gap:6px;align-items:center;"><input class="form-input" id="f_mapLink" placeholder="Paste Google Maps URL" style="flex:1;"/><a id="f_mapBtn" href="#" target="_blank" rel="noopener" style="display:none;background:var(--blue-dark);color:#fff;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">🗺 Open Map</a></div></div>
         </div>
       </div>
@@ -561,6 +584,26 @@ const STAGES = [
   {key:'Cancelled',             cls:'cancelled',hdr:'sh-cancelled',badge:'background:#F3F4F6;color:#6B7280'},
 ];
 const SPV_LIST = ['Estela Living LLC','Estela Specs 1 LLC','Estela Specs 2 LLC','Estela Specs 3 LLC','Estela Specs 4 LLC','Estela Specs 6 LLC','Estela Specs 7 LLC','Estela Specs 9 LLC'];
+// MS House # — ERP code system
+const DEV_CODES = [
+  {key:'002', label:'Marion Oaks', zip:'34473'},
+  {key:'003', label:'Ocala Waterways', zip:'34476'},
+  {key:'004', label:'Palm Coast', zip:null}, // detected by "Palm Coast" in address
+];
+function detectDevelopment(address){
+  if(!address) return '';
+  if(address.includes('34473')) return '002';
+  if(address.includes('34476')) return '003';
+  if(/palm\s*coast/i.test(address)) return '004';
+  return '';
+}
+function devLabel(code){
+  const d=DEV_CODES.find(x=>x.key===code);
+  return d?d.label:'';
+}
+function formatMsHouse(devCode, seq){
+  return devCode + String(seq).padStart(5,'0');
+}
 // Document categories — each deal folder gets these subfolders, files are organized into them
 const DOC_CATEGORIES = [
   {key:'contract',  label:'Contract & Offer', folder:'01 Contract',       icon:'📄', color:'#DBEAFE', text:'#1D4ED8'},
@@ -1293,6 +1336,7 @@ function renderCard(d,s){
   return`<div class="deal-card ${s.cls}" draggable="true" ondragstart="cardDragStart(event,${d.id})" ondragend="cardDragEnd(event)" ${alert?'style="border-color:#FECACA"':''} onclick="openEdit(${d.id})">
     <div class="card-actions">${ac?`<span class="attach-count">📎${ac}</span>`:''}<button class="card-btn" onclick="event.stopPropagation();openEdit(${d.id})">✏️</button></div>
     ${d.notes?`<div class="card-alert-note">⚠ ${d.notes}</div>`:''}
+    ${d.msHouseNum?`<span class="card-ms">MS ${d.msHouseNum}</span>`:''}
     <div class="card-address">${d.address}</div>
     <div class="card-amount">${fm(d.amount)}</div>
     <hr class="card-divider"/>
@@ -1420,6 +1464,8 @@ function openEdit(id){
   document.getElementById('f_orientation').value=d.orientation||'';
   document.getElementById('f_mapLink').value=d.mapLink||'';
   updateMapBtn();
+  document.getElementById('f_development').value=d.development||detectDevelopment(d.address)||'';
+  updateMsHouseDisplay();
   document.getElementById('f_stage').value=d.stage||'Offer Letter';
   syncStagePills(d.stage||'Offer Letter');
   if(SPV_LIST.includes(d.spv)){document.getElementById('f_spv').value=d.spv;document.getElementById('f_spv_custom').style.display='none';}
@@ -1439,8 +1485,71 @@ function clearForm(){
   const mb=document.getElementById('f_mapBtn');if(mb){mb.style.display='none';mb.href='#';}
   document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';document.getElementById('f_orientation').value='';
   document.getElementById('f_stage').value='Offer Letter';document.getElementById('f_spv_custom').style.display='none';
+  document.getElementById('f_development').value='';
+  const msD=document.getElementById('f_msHouseDisplay');if(msD)msD.textContent='—';
+  const msB=document.getElementById('btnAssignMs');if(msB){msB.textContent='Assign #';msB.disabled=false;}
 }
 function toggleCustomSpv(el){document.getElementById('f_spv_custom').style.display=el.value==='__custom__'?'block':'none';}
+
+// MS House # helpers
+function updateMsHouseDisplay(){
+  const deal=editingId?deals.find(d=>d.id===editingId):null;
+  const display=document.getElementById('f_msHouseDisplay');
+  const btn=document.getElementById('btnAssignMs');
+  if(!display||!btn) return;
+  if(deal&&deal.msHouseNum){
+    display.textContent=deal.msHouseNum;
+    display.title=devLabel(deal.development||deal.msHouseNum.substring(0,3));
+    btn.textContent='✓ Assigned';
+    btn.disabled=true;
+  } else {
+    display.textContent='—';
+    display.title='';
+    btn.textContent='Assign #';
+    btn.disabled=false;
+  }
+}
+function autoDetectDev(){
+  const addr=document.getElementById('f_address').value;
+  const devEl=document.getElementById('f_development');
+  if(!devEl.value||devEl.value===''){
+    const detected=detectDevelopment(addr);
+    // Show the detected value as a hint but don't force it
+    if(detected) devEl.value=detected;
+  }
+}
+async function assignMsHouse(){
+  if(!editingId){showToast('Save the deal first before assigning MS House #','red');return;}
+  const deal=deals.find(d=>d.id===editingId);
+  if(!deal){return;}
+  if(deal.msHouseNum){showToast('MS House # already assigned: '+deal.msHouseNum,'green');return;}
+  // Determine development code
+  let devCode=document.getElementById('f_development').value;
+  if(!devCode) devCode=detectDevelopment(deal.address);
+  if(!devCode){showToast('Select a Development first — cannot determine from address.','red');return;}
+  // Get next sequence from Firebase (atomic increment)
+  const btn=document.getElementById('btnAssignMs');
+  btn.textContent='Assigning...';btn.disabled=true;
+  try{
+    const seqRef=firebase.database().ref('msHouseSeq');
+    const result=await seqRef.transaction(current=>{
+      return (current||262)+1; // starts after 262 (last assigned: 00400262)
+    });
+    if(!result.committed){throw new Error('Transaction failed');}
+    const seq=result.snapshot.val();
+    const msNum=formatMsHouse(devCode, seq);
+    // Save to deal
+    deal.msHouseNum=msNum;
+    deal.development=devCode;
+    saveDeals();render();
+    updateMsHouseDisplay();
+    showToast('MS House # assigned: '+msNum,'green');
+  } catch(e){
+    console.error('assignMsHouse error:',e);
+    showToast('Failed to assign MS House #. Try again.','red');
+    btn.textContent='Assign #';btn.disabled=false;
+  }
+}
 
 // Map link button helper
 function updateMapBtn(){
@@ -1469,9 +1578,10 @@ function autoSaveIfEditing(){
     if(el) el.addEventListener('input',()=>{
       autoSaveIfEditing();
       if(id==='f_mapLink') updateMapBtn();
+      if(id==='f_address') autoDetectDev();
     });
   });
-  ['f_spv','f_escrowPaid','f_stage','f_orientation'].forEach(id=>{
+  ['f_spv','f_escrowPaid','f_stage','f_orientation','f_development'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('change',()=>{
       autoSaveIfEditing();
@@ -1488,7 +1598,8 @@ async function saveDeal(silent){
   const existing=editingId?deals.find(d=>d.id===editingId):null;
   const oldStage=existing?existing.stage:null;
   const newStage=document.getElementById('f_stage').value;
-  const deal={id:editingId||nextId++,stage:newStage,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,stageHistory:existing?JSON.parse(JSON.stringify(existing.stageHistory||[])):[],_patchedTo:PATCH_VERSION};
+  const devVal=document.getElementById('f_development').value||detectDevelopment(address);
+  const deal={id:editingId||nextId++,stage:newStage,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,lotWalkthrough:existing?!!existing.lotWalkthrough:false,managerApproval:existing?!!existing.managerApproval:false,development:devVal,msHouseNum:existing?existing.msHouseNum||'':'',stageHistory:existing?JSON.parse(JSON.stringify(existing.stageHistory||[])):[],_patchedTo:PATCH_VERSION};
   // Record stage change timestamp
   if(!existing){
     // New deal — record initial stage
