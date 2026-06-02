@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <title>Estela Realty — Deal Pipeline</title>
 <style>
@@ -2457,57 +2458,72 @@ document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',
 (function(){let c=false;deals.forEach(d=>{if((d._patchedTo||0)<PATCH_VERSION){d._patchedTo=PATCH_VERSION;c=true;}});if(c)saveDeals();})();
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
-// ── FIREBASE REAL-TIME LISTENER ───────────────────────────────────────────────
-// Keeps listening for changes so multiple users/devices stay in sync.
-// _pendingWrite flag prevents echo loops from our own writes.
-fbRef.on('value', snapshot => {
-  if(_pendingWrite) return; // our own write echoing back — ignore
+// ── FIREBASE ANONYMOUS AUTH + REAL-TIME LISTENER ──────────────────────────────
+// Sign in anonymously first, then start the database listener.
+// This satisfies Firebase security rules (auth != null) without requiring login.
+firebase.auth().signInAnonymously().then(()=>{
+  console.log('[auth] Signed in anonymously');
+  startFirebaseListener();
+}).catch(err=>{
+  console.error('[auth] Anonymous sign-in failed:', err);
+  updateSyncStatus('error');
+  showToast('⚠ Cloud sync unavailable — working offline','red');
+  // Still render with local data
+  render();
+});
 
-  let data = snapshot.val();
-  // Firebase can return an object with numeric keys — convert to array if needed
-  if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
+function startFirebaseListener(){
+  // Keeps listening for changes so multiple users/devices stay in sync.
+  // _pendingWrite flag prevents echo loops from our own writes.
+  fbRef.on('value', snapshot => {
+    if(_pendingWrite) return; // our own write echoing back — ignore
 
-  if(data && Array.isArray(data) && data.length > 0){
-    if(!fbReady){
-      // ── INITIAL SYNC ──
-      // Firebase is ALWAYS the source of truth for multi-user access.
-      // Never push local data over Firebase on initial load — this prevents
-      // stale browser tabs from overwriting shared data.
-      console.log('[fbListener] Initial sync: accepting Firebase data (' + data.length + ' deals, local had ' + deals.length + ')');
-    }
-    // ── APPLY INCOMING CHANGES (initial sync + live updates from other users) ──
-    const incoming = JSON.stringify(data);
-    if(incoming !== JSON.stringify(deals)){
-      // Don't overwrite if user is currently editing a deal in the modal
-      if(editingId){
-        console.log('[fbListener] Incoming change deferred — user is editing deal', editingId);
-        // Queue the update to apply when modal closes
-        window._pendingFbData = data;
+    let data = snapshot.val();
+    // Firebase can return an object with numeric keys — convert to array if needed
+    if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
+
+    if(data && Array.isArray(data) && data.length > 0){
+      if(!fbReady){
+        // ── INITIAL SYNC ──
+        // Firebase is ALWAYS the source of truth for multi-user access.
+        // Never push local data over Firebase on initial load — this prevents
+        // stale browser tabs from overwriting shared data.
+        console.log('[fbListener] Initial sync: accepting Firebase data (' + data.length + ' deals, local had ' + deals.length + ')');
+      }
+      // ── APPLY INCOMING CHANGES (initial sync + live updates from other users) ──
+      const incoming = JSON.stringify(data);
+      if(incoming !== JSON.stringify(deals)){
+        // Don't overwrite if user is currently editing a deal in the modal
+        if(editingId){
+          console.log('[fbListener] Incoming change deferred — user is editing deal', editingId);
+          // Queue the update to apply when modal closes
+          window._pendingFbData = data;
+        } else {
+          if(dataFolderHandle && fbReady){ snapshotDeals('pre-fb-overwrite'); }
+          deals = data;
+          nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
+          dealsFromDefaults = false;
+          localStorage.setItem(LS_KEY, JSON.stringify(deals));
+          localStorage.setItem(LS_KEY+'_fbSyncedAt', Date.now().toString());
+          render();
+          if(fbReady) showToast('🔄 Updated from another device','green');
+        }
+      }
+      fbReady = true;
+      updateSyncStatus('saved');
+    } else {
+      // Firebase returned empty/null.
+      fbReady = true;
+      if(dealsFromDefaults && dealsEqualDefaults()){
+        console.warn('[fbListener] Firebase empty AND local is just DEFAULTS — refusing to write.');
+        updateSyncStatus('error');
       } else {
-        if(dataFolderHandle && fbReady){ snapshotDeals('pre-fb-overwrite'); }
-        deals = data;
-        nextId = Math.max(...deals.map(d=>d.id), 0) + 1;
-        dealsFromDefaults = false;
-        localStorage.setItem(LS_KEY, JSON.stringify(deals));
-        localStorage.setItem(LS_KEY+'_fbSyncedAt', Date.now().toString());
-        render();
-        if(fbReady) showToast('🔄 Updated from another device','green');
+        saveDeals();
+        updateSyncStatus('saved');
       }
     }
-    fbReady = true;
-    updateSyncStatus('saved');
-  } else {
-    // Firebase returned empty/null.
-    fbReady = true;
-    if(dealsFromDefaults && dealsEqualDefaults()){
-      console.warn('[fbListener] Firebase empty AND local is just DEFAULTS — refusing to write.');
-      updateSyncStatus('error');
-    } else {
-      saveDeals();
-      updateSyncStatus('saved');
-    }
-  }
-});
+  });
+}
 
 Promise.all([loadFolderHandle(), loadDataFolder()]).then(()=>{
   render();
