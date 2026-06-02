@@ -27,10 +27,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .nav-dropdown.open .dd-arrow{transform:rotate(180deg);}
 .nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.18);min-width:200px;padding:4px 0;z-index:200;border:1px solid #E5E7EB;}
 .nav-dropdown.open .nav-dropdown-menu{display:block;}
-.nav-dd-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;border:none;background:none;width:100%;text-align:left;}
+.nav-dd-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;border:none;background:none;width:100%;text-align:left;flex-wrap:wrap;}
 .nav-dd-item:hover{background:#F3F4F6;}
 .nav-dd-item .dd-icon{width:20px;text-align:center;font-size:14px;}
 .nav-dd-divider{height:1px;background:#E5E7EB;margin:4px 0;}
+.dd-folder-name{display:block;font-size:10px;font-weight:400;color:#9CA3AF;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.dd-folder-name:empty{display:none;}
+.dd-folder-name.connected{color:#10B981;}
 .btn-add{background:#4FC3F7;color:var(--blue-dark);}
 .btn-folder{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);}
 .btn-nav:hover{opacity:.85;}
@@ -307,8 +310,14 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="nav-dropdown" id="ddTools">
       <button class="nav-dropdown-btn" onclick="toggleDropdown('ddTools')">⚙️ Tools <span class="dd-arrow">▾</span></button>
       <div class="nav-dropdown-menu">
-        <button class="nav-dd-item" onclick="setDataFolder();closeDropdowns()"><span class="dd-icon">☁️</span> Set Sync Folder</button>
-        <button class="nav-dd-item" onclick="setDocsFolder();closeDropdowns()"><span class="dd-icon">📁</span> Set Docs Folder</button>
+        <button class="nav-dd-item" onclick="setDataFolder();closeDropdowns()">
+          <span class="dd-icon">☁️</span> Set Sync Folder
+          <span class="dd-folder-name" id="ddSyncName"></span>
+        </button>
+        <button class="nav-dd-item" onclick="setDocsFolder();closeDropdowns()">
+          <span class="dd-icon">📁</span> Set Docs Folder
+          <span class="dd-folder-name" id="ddDocsName"></span>
+        </button>
         <div class="nav-dd-divider"></div>
         <button class="nav-dd-item" onclick="openBackups();closeDropdowns()"><span class="dd-icon">💾</span> Backups & Restore</button>
       </div>
@@ -706,6 +715,12 @@ function updateSyncStatus(state){
   else if(state==='saving'){el.textContent='☁️ Saving…';el.className='folder-status';}
   else if(state==='error'){el.textContent='⚠️ Sync error';el.className='folder-status unset';}
   else if(state==='set'){el.textContent='☁️ Synced';el.className='folder-status';}
+  // Update dropdown with sync folder name
+  const ddEl=document.getElementById('ddSyncName');
+  if(ddEl && dataFolderHandle){
+    ddEl.textContent='✓ '+dataFolderHandle.name;
+    ddEl.className='dd-folder-name connected';
+  }
 }
 async function setDataFolder(){
   if(!window.showDirectoryPicker){showToast('Use Chrome or Edge for sync.','red');return;}
@@ -931,6 +946,8 @@ function updateFolderStatus(name){
   if(el){el.textContent='📁 '+name;el.className='folder-status';}
   const btn=document.getElementById('btnSync');
   if(btn)btn.style.display='inline-block';
+  const ddEl=document.getElementById('ddDocsName');
+  if(ddEl){ddEl.textContent='✓ '+name;ddEl.className='dd-folder-name connected';}
 }
 
 async function syncDocsFolder(){
