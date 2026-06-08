@@ -1679,7 +1679,7 @@ function autoSaveIfEditing(){
 }
 // Attach auto-save listeners once DOM is ready
 (function(){
-  const fields=['f_address','f_parcel','f_amount','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'];
+  const fields=['f_address','f_parcel','f_amount','f_lotPremium','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'];
   fields.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('input',()=>{
