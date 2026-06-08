@@ -11,7 +11,7 @@
 <style>
 :root{--blue-dark:#1F4E79;--blue-mid:#2E75B6;--blue-light:#DBEAFE;--orange:#C55A11;--red-dark:#843C0C;--green-dark:#375623;--teal-dark:#0F766E;--purple:#5B3A8E;--gray-bg:#F4F6F9;--gray-border:#DDE1E7;--text:#1a1a2e;--text-light:#6B7280;--white:#fff;--red-alert:#DC2626;--yellow:#D97706;--green-ok:#16A34A;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var(--text);min-height:100vh;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
 /* NAV */
 .navbar{background:var(--blue-dark);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);position:sticky;top:0;z-index:100;}
 .navbar-brand{display:flex;align-items:center;gap:10px;color:#fff;font-size:17px;font-weight:700;}
@@ -19,7 +19,38 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .navbar-right{display:flex;align-items:center;gap:8px;}
 .navbar-date{color:#93C5FD;font-size:12px;}
 .btn-nav{border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;}
-/* DROPDOWN MENUS */
+.btn-add{background:#4FC3F7;color:var(--blue-dark);}
+.btn-nav:hover{opacity:.85;}
+/* SIDEBAR */
+.app-layout{display:flex;flex:1;min-height:0;}
+.sidebar{width:56px;background:var(--blue-dark);display:flex;flex-direction:column;position:sticky;top:54px;height:calc(100vh - 54px);z-index:90;transition:width .22s ease;overflow:hidden;flex-shrink:0;border-right:1px solid rgba(255,255,255,.1);}
+.sidebar.expanded{width:220px;box-shadow:4px 0 20px rgba(0,0,0,.15);}
+.sidebar-section{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1);}
+.sidebar-section:last-child{border-bottom:none;}
+.sidebar-section-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);padding:8px 16px 4px;white-space:nowrap;overflow:hidden;opacity:0;transition:opacity .15s;}
+.sidebar.expanded .sidebar-section-label{opacity:1;}
+.sb-item{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;border:none;background:none;width:100%;color:rgba(255,255,255,.75);font-size:12px;font-weight:600;white-space:nowrap;transition:background .12s,color .12s;position:relative;}
+.sb-item:hover{background:rgba(255,255,255,.1);color:#fff;}
+.sb-item .sb-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.sb-item .sb-label{overflow:hidden;opacity:0;transition:opacity .15s;}
+.sidebar.expanded .sb-item .sb-label{opacity:1;}
+.sb-item .sb-status{font-size:9px;margin-left:auto;opacity:0;transition:opacity .15s;}
+.sidebar.expanded .sb-item .sb-status{opacity:1;}
+.sb-status.ok{color:#86EFAC;}.sb-status.warn{color:#FCA5A5;}
+.sb-sub{padding-left:52px;}
+.sb-divider{height:1px;background:rgba(255,255,255,.1);margin:4px 12px;}
+/* Sidebar tooltip for collapsed state */
+.sb-item[title]{position:relative;}
+.sidebar:not(.expanded) .sb-item:hover::after{content:attr(title);position:absolute;left:56px;top:50%;transform:translateY(-50%);background:var(--text);color:#fff;font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;white-space:nowrap;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.2);pointer-events:none;}
+.sidebar:not(.expanded) .sb-item:hover::before{content:'';position:absolute;left:50px;top:50%;transform:translateY(-50%);border:5px solid transparent;border-right-color:var(--text);z-index:200;pointer-events:none;}
+/* Sidebar sync button */
+.sb-sync-btn{margin:8px 10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .12s;white-space:nowrap;overflow:hidden;}
+.sb-sync-btn:hover{background:rgba(255,255,255,.25);}
+.sb-sync-btn .sb-sync-label{opacity:0;transition:opacity .15s;}
+.sidebar.expanded .sb-sync-btn .sb-sync-label{opacity:1;}
+/* Main content */
+.main-content{flex:1;min-width:0;overflow-x:auto;}
+/* DROPDOWN MENUS (kept for potential reuse) */
 .nav-dropdown{position:relative;}
 .nav-dropdown-btn{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;}
 .nav-dropdown-btn:hover{background:rgba(255,255,255,.25);}
@@ -34,9 +65,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .dd-folder-name{display:block;font-size:10px;font-weight:400;color:#9CA3AF;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
 .dd-folder-name:empty{display:none;}
 .dd-folder-name.connected{color:#10B981;}
-.btn-add{background:#4FC3F7;color:var(--blue-dark);}
-.btn-folder{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);}
-.btn-nav:hover{opacity:.85;}
 .folder-status{font-size:11px;color:#86EFAC;display:flex;align-items:center;gap:4px;}
 .folder-status.unset{color:#FCA5A5;}
 /* KPI */
@@ -285,9 +313,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
   .form-row-2{grid-template-columns:1fr;}
   .stage-bar{gap:4px;}
   .stage-pill{padding:5px 10px;font-size:10.5px;}
+  .sidebar{display:none;}
 }
 @media print{
-  .navbar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
+  .navbar,.sidebar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
   #reportOverlay.open,#cashflowOverlay.open,#closingsOverlay.open,#titleContactsOverlay.open{position:static!important;background:none!important;display:block!important;}
   .modal{box-shadow:none!important;max-height:none!important;width:100%!important;border-radius:0!important;}
   .report-print-btn,.modal-footer,.modal-close{display:none!important;}
@@ -300,43 +329,59 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
   <div class="navbar-brand"><div class="dot"></div>Estela Realty LLC &nbsp;·&nbsp; Deal Pipeline</div>
   <div class="navbar-right">
     <div class="navbar-date" id="navDate"></div>
-    <div class="folder-status unset" id="syncStatus" title="Click to set OneDrive sync folder" style="display:none;">☁️ Not synced</div>
-    <div class="folder-status unset" id="folderStatus" title="Click to set your Documents folder" style="display:none;">📁 No folder set</div>
-    <button class="btn-nav btn-sync" id="btnSync" onclick="syncDocsFolder()" title="Scan Documents folder and sync all attachments" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">🔄 Sync</button>
-
-    <!-- Reports dropdown -->
-    <div class="nav-dropdown" id="ddReports">
-      <button class="nav-dropdown-btn" onclick="toggleDropdown('ddReports')">📊 Reports <span class="dd-arrow">▾</span></button>
-      <div class="nav-dropdown-menu">
-        <button class="nav-dd-item" onclick="openReport();closeDropdowns()"><span class="dd-icon">📋</span> Pipeline Report</button>
-        <button class="nav-dd-item" onclick="openCashflow();closeDropdowns()"><span class="dd-icon">💵</span> Cashflow by SPV</button>
-        <button class="nav-dd-item" onclick="openClosings();closeDropdowns()"><span class="dd-icon">🗓</span> Closings Schedule</button>
-        <div class="nav-dd-divider"></div>
-        <button class="nav-dd-item" onclick="openTitleContacts();closeDropdowns()"><span class="dd-icon">📞</span> Title Contacts</button>
-      </div>
-    </div>
-
-    <!-- Tools dropdown -->
-    <div class="nav-dropdown" id="ddTools">
-      <button class="nav-dropdown-btn" onclick="toggleDropdown('ddTools')">⚙️ Tools <span class="dd-arrow">▾</span></button>
-      <div class="nav-dropdown-menu">
-        <button class="nav-dd-item" onclick="setDataFolder();closeDropdowns()">
-          <span class="dd-icon">☁️</span> Set Sync Folder
-          <span class="dd-folder-name" id="ddSyncName"></span>
-        </button>
-        <button class="nav-dd-item" onclick="setDocsFolder();closeDropdowns()">
-          <span class="dd-icon">📁</span> Set Docs Folder
-          <span class="dd-folder-name" id="ddDocsName"></span>
-        </button>
-        <div class="nav-dd-divider"></div>
-        <button class="nav-dd-item" onclick="openBackups();closeDropdowns()"><span class="dd-icon">💾</span> Backups & Restore</button>
-      </div>
-    </div>
-
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
   </div>
 </nav>
-<div id="app"></div>
+<!-- Hidden status elements (kept for JS compatibility) -->
+<div style="display:none;">
+  <div id="syncStatus"></div>
+  <div id="folderStatus"></div>
+  <button id="btnSync"></button>
+</div>
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Sync</div>
+      <button class="sb-item" title="Set Sync Folder" onclick="setDataFolder()">
+        <span class="sb-icon">☁️</span>
+        <span class="sb-label">Sync Folder</span>
+        <span class="sb-status" id="sbSyncStatus"></span>
+      </button>
+      <button class="sb-item" title="Set Docs Folder" onclick="setDocsFolder()">
+        <span class="sb-icon">📁</span>
+        <span class="sb-label">Docs Folder</span>
+        <span class="sb-status" id="sbDocsStatus"></span>
+      </button>
+      <button class="sb-sync-btn" id="sbSyncBtn" onclick="syncDocsFolder()" title="Sync Now" style="display:none;">
+        <span>🔄</span><span class="sb-sync-label">Sync Now</span>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Reports</div>
+      <button class="sb-item" title="Pipeline Report" onclick="openReport()">
+        <span class="sb-icon">📋</span><span class="sb-label">Pipeline Report</span>
+      </button>
+      <button class="sb-item" title="Cashflow by SPV" onclick="openCashflow()">
+        <span class="sb-icon">💵</span><span class="sb-label">Cashflow by SPV</span>
+      </button>
+      <button class="sb-item" title="Closings Schedule" onclick="openClosings()">
+        <span class="sb-icon">🗓</span><span class="sb-label">Closings Schedule</span>
+      </button>
+      <button class="sb-item" title="Title Contacts" onclick="openTitleContacts()">
+        <span class="sb-icon">📞</span><span class="sb-label">Title Contacts</span>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Tools</div>
+      <button class="sb-item" title="Backups & Restore" onclick="openBackups()">
+        <span class="sb-icon">💾</span><span class="sb-label">Backups & Restore</span>
+      </button>
+    </div>
+  </aside>
+  <!-- MAIN CONTENT -->
+  <div class="main-content" id="app"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <!-- EDIT/ADD MODAL -->
@@ -735,17 +780,21 @@ function saveDeals(){
 }
 function updateSyncStatus(state){
   const el=document.getElementById('syncStatus');
-  if(!el)return;
-  if(state==='saved'){el.textContent='☁️ Synced';el.className='folder-status';}
-  else if(state==='loaded'){el.textContent='☁️ Synced';el.className='folder-status';}
-  else if(state==='saving'){el.textContent='☁️ Saving…';el.className='folder-status';}
-  else if(state==='error'){el.textContent='⚠️ Sync error';el.className='folder-status unset';}
-  else if(state==='set'){el.textContent='☁️ Synced';el.className='folder-status';}
-  // Update dropdown with sync folder name
-  const ddEl=document.getElementById('ddSyncName');
-  if(ddEl && dataFolderHandle){
-    ddEl.textContent='✓ '+dataFolderHandle.name;
-    ddEl.className='dd-folder-name connected';
+  if(el){
+    if(state==='saved'){el.textContent='☁️ Synced';el.className='folder-status';}
+    else if(state==='loaded'){el.textContent='☁️ Synced';el.className='folder-status';}
+    else if(state==='saving'){el.textContent='☁️ Saving…';el.className='folder-status';}
+    else if(state==='error'){el.textContent='⚠️ Sync error';el.className='folder-status unset';}
+    else if(state==='set'){el.textContent='☁️ Synced';el.className='folder-status';}
+  }
+  // Update sidebar sync status
+  const sbEl=document.getElementById('sbSyncStatus');
+  if(sbEl && dataFolderHandle){
+    sbEl.textContent='✓ '+dataFolderHandle.name;
+    sbEl.className='sb-status ok';
+  } else if(sbEl && state==='error'){
+    sbEl.textContent='⚠ Error';
+    sbEl.className='sb-status warn';
   }
 }
 async function setDataFolder(){
@@ -972,8 +1021,12 @@ function updateFolderStatus(name){
   if(el){el.textContent='📁 '+name;el.className='folder-status';}
   const btn=document.getElementById('btnSync');
   if(btn)btn.style.display='inline-block';
-  const ddEl=document.getElementById('ddDocsName');
-  if(ddEl){ddEl.textContent='✓ '+name;ddEl.className='dd-folder-name connected';}
+  // Update sidebar docs status
+  const sbEl=document.getElementById('sbDocsStatus');
+  if(sbEl){sbEl.textContent='✓ '+name;sbEl.className='sb-status ok';}
+  // Show sidebar sync button
+  const sbSync=document.getElementById('sbSyncBtn');
+  if(sbSync)sbSync.style.display='flex';
 }
 
 async function syncDocsFolder(){
@@ -1717,6 +1770,26 @@ function toggleDropdown(id){
 }
 function closeDropdowns(){document.querySelectorAll('.nav-dropdown.open').forEach(el=>el.classList.remove('open'));}
 document.addEventListener('click',e=>{if(!e.target.closest('.nav-dropdown'))closeDropdowns();});
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+(function(){
+  const sb=document.getElementById('sidebar');
+  if(!sb)return;
+  // Click on sidebar toggles expand/collapse
+  sb.addEventListener('click',function(e){
+    // If clicking a button item, expand sidebar if collapsed, but don't collapse it
+    if(!sb.classList.contains('expanded')){
+      // Only expand — the onclick handler on the button will still fire
+      sb.classList.add('expanded');
+    }
+  });
+  // Click outside sidebar collapses it
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.sidebar') && sb.classList.contains('expanded')){
+      sb.classList.remove('expanded');
+    }
+  });
+})();
 
 // ── CONTRACT ANALYZER ─────────────────────────────────────────────────────────
 async function analyzeContract(){
