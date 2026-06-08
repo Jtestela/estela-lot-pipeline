@@ -512,7 +512,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
             <span class="sec-icon">🏢</span><span class="sec-title">Title Company</span><span class="sec-toggle">▾</span>
           </div>
           <div class="form-section-body">
-            <div class="form-group full"><label class="form-label">Company</label><input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title"/></div>
+            <div class="form-group full"><label class="form-label">Company</label>
+              <select class="form-select" id="f_titleCompanySelect" onchange="onTitleCompanySelect(this)">
+                <option value="">— Select or type new —</option>
+                <option value="__custom__">✏️ Enter manually…</option>
+              </select>
+              <input class="form-input" id="f_titleCompany" placeholder="e.g. Pioneer Title" style="display:none;margin-top:4px;"/>
+            </div>
             <div class="form-group full"><label class="form-label">Contact Name</label><input class="form-input" id="f_titleContact" placeholder="Contact name"/></div>
             <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="f_titlePhone" placeholder="352-555-1234" type="tel"/></div>
             <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="f_titleEmail" placeholder="closer@title.com" type="email"/></div>
@@ -1847,7 +1853,22 @@ function openEdit(id){
   document.getElementById('f_escrowPaid').value=d.escrowPaid?'true':'false';
   document.getElementById('f_dd').value=d.dd||'';
   document.getElementById('f_notes').value=d.notes||'';
-  document.getElementById('f_titleCompany').value=d.titleCompany||'';
+  populateTitleCompanyDropdown();
+  const tcSel=document.getElementById('f_titleCompanySelect');
+  const tcInput=document.getElementById('f_titleCompany');
+  if(d.titleCompany && [...tcSel.options].some(o=>o.value===d.titleCompany)){
+    tcSel.value=d.titleCompany;
+    tcInput.style.display='none';
+    tcInput.value=d.titleCompany;
+  } else if(d.titleCompany){
+    tcSel.value='__custom__';
+    tcInput.style.display='block';
+    tcInput.value=d.titleCompany;
+  } else {
+    tcSel.value='';
+    tcInput.style.display='none';
+    tcInput.value='';
+  }
   document.getElementById('f_titleContact').value=d.titleContact||'';
   document.getElementById('f_titlePhone').value=d.titlePhone||'';
   document.getElementById('f_titleEmail').value=d.titleEmail||'';
@@ -1883,8 +1904,62 @@ function clearForm(){
   document.getElementById('f_development').value='';
   const msD=document.getElementById('f_msHouseDisplay');if(msD)msD.textContent='—';
   const msB=document.getElementById('btnAssignMs');if(msB){msB.textContent='Assign #';msB.disabled=false;}
+  populateTitleCompanyDropdown();
+  document.getElementById('f_titleCompanySelect').value='';
+  document.getElementById('f_titleCompany').style.display='none';
 }
 function toggleCustomSpv(el){document.getElementById('f_spv_custom').style.display=el.value==='__custom__'?'block':'none';}
+
+// ── TITLE COMPANY DROPDOWN ───────────────────────────────────────────────────
+function populateTitleCompanyDropdown(){
+  const sel=document.getElementById('f_titleCompanySelect');
+  if(!sel)return;
+  // Build unique list from contacts + deals
+  const names=new Set();
+  contacts.filter(c=>c.type==='title'&&c.company).forEach(c=>names.add(c.company));
+  deals.forEach(d=>{if(d.titleCompany)names.add(d.titleCompany);});
+  const sorted=[...names].sort((a,b)=>a.localeCompare(b));
+  // Rebuild options
+  sel.innerHTML='<option value="">— Select or type new —</option>';
+  sorted.forEach(n=>{
+    const opt=document.createElement('option');
+    opt.value=n; opt.textContent=n;
+    sel.appendChild(opt);
+  });
+  const custom=document.createElement('option');
+  custom.value='__custom__'; custom.textContent='✏️ Enter manually…';
+  sel.appendChild(custom);
+}
+
+function onTitleCompanySelect(sel){
+  const val=sel.value;
+  const manualInput=document.getElementById('f_titleCompany');
+  if(val==='__custom__'){
+    manualInput.style.display='block';
+    manualInput.value='';
+    manualInput.focus();
+    return;
+  }
+  manualInput.style.display='none';
+  if(!val){
+    // Cleared selection — blank out fields
+    manualInput.value='';
+    document.getElementById('f_titleContact').value='';
+    document.getElementById('f_titlePhone').value='';
+    document.getElementById('f_titleEmail').value='';
+    autoSaveIfEditing();
+    return;
+  }
+  // Auto-fill from contacts directory
+  manualInput.value=val;
+  const contact=contacts.find(c=>c.type==='title'&&c.company&&c.company.toLowerCase()===val.toLowerCase());
+  if(contact){
+    document.getElementById('f_titleContact').value=contact.name||'';
+    document.getElementById('f_titlePhone').value=contact.phone||'';
+    document.getElementById('f_titleEmail').value=contact.email||'';
+  }
+  autoSaveIfEditing();
+}
 
 // MS House # helpers
 function updateMsHouseDisplay(){
@@ -2250,7 +2325,13 @@ function applyParsedFields(f){
     filled.push('SPV');
   }
   if(f.close){document.getElementById('f_close').value=f.close;filled.push('Close Date');}
-  if(f.titleCompany){document.getElementById('f_titleCompany').value=f.titleCompany;filled.push('Title Co.');}
+  if(f.titleCompany){
+    document.getElementById('f_titleCompany').value=f.titleCompany;
+    const tcSel=document.getElementById('f_titleCompanySelect');
+    if([...tcSel.options].some(o=>o.value===f.titleCompany)){tcSel.value=f.titleCompany;document.getElementById('f_titleCompany').style.display='none';}
+    else{tcSel.value='__custom__';document.getElementById('f_titleCompany').style.display='block';}
+    filled.push('Title Co.');
+  }
 
   // Compute escrow due date from today + days
   if(f.escrowDays){
