@@ -308,6 +308,36 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .tc-link{color:var(--blue-mid);text-decoration:none;font-weight:600;}
 .tc-link:hover{text-decoration:underline;}
 .tc-missing{color:var(--text-light);font-style:italic;font-size:11px;}
+/* NAV TABS */
+.nav-tabs{display:flex;gap:4px;margin-left:32px;}
+.nav-tab{background:none;border:none;color:rgba(255,255,255,.6);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;border-bottom:2.5px solid transparent;transition:all .15s;}
+.nav-tab:hover{color:rgba(255,255,255,.85);}
+.nav-tab.active{color:#fff;border-bottom-color:#4FC3F7;}
+/* CONTACTS TAB */
+.contacts-page{padding:20px 24px 32px;}
+.contacts-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.contacts-toolbar h2{font-size:18px;font-weight:700;color:var(--blue-dark);margin:0;}
+.contacts-toolbar-btns{display:flex;gap:8px;}
+.contacts-section{margin-bottom:28px;}
+.contacts-section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--gray-border);}
+.contacts-section-title{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.contacts-section-badge{background:var(--blue-light);color:var(--blue-mid);border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;}
+.contacts-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.contacts-table th{background:#F8FAFC;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);padding:10px 12px;text-align:left;border-bottom:1.5px solid var(--gray-border);}
+.contacts-table td{padding:10px 12px;border-bottom:1px solid #F1F3F5;vertical-align:middle;}
+.contacts-table tr:hover td{background:#FAFBFC;}
+.contacts-table .ct-name{font-weight:600;color:var(--text);}
+.contacts-table .ct-link{color:var(--blue-mid);text-decoration:none;font-weight:500;}
+.contacts-table .ct-link:hover{text-decoration:underline;}
+.contacts-table .ct-deals{display:flex;flex-wrap:wrap;gap:4px;}
+.ct-deal-chip{background:var(--blue-light);color:var(--blue-mid);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;white-space:nowrap;cursor:pointer;}
+.ct-deal-chip:hover{background:#BFDBFE;}
+.ct-empty{text-align:center;color:var(--text-light);font-size:12px;padding:20px 0;font-style:italic;}
+.ct-actions{display:flex;gap:4px;}
+.ct-btn{background:none;border:none;cursor:pointer;font-size:13px;opacity:.5;padding:2px 4px;}
+.ct-btn:hover{opacity:1;}
+.ct-search{border:1.5px solid var(--gray-border);border-radius:6px;padding:7px 12px;font-size:12px;width:240px;background:#fff;}
+.ct-search:focus{outline:none;border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(46,117,182,.1);}
 @media(max-width:900px){
   #editOverlay .modal{width:96vw;}
   .form-row-2{grid-template-columns:1fr;}
@@ -316,7 +346,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
   .sidebar{display:none;}
 }
 @media print{
-  .navbar,.sidebar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay{display:none!important;}
+  .navbar,.sidebar,.kpi-bar,.alerts-bar,.filter-bar,.board,.toast,#editOverlay,#detailOverlay,#confirmOverlay,#contactsApp{display:none!important;}
   #reportOverlay.open,#cashflowOverlay.open,#closingsOverlay.open,#titleContactsOverlay.open{position:static!important;background:none!important;display:block!important;}
   .modal{box-shadow:none!important;max-height:none!important;width:100%!important;border-radius:0!important;}
   .report-print-btn,.modal-footer,.modal-close{display:none!important;}
@@ -327,6 +357,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 <body>
 <nav class="navbar">
   <div class="navbar-brand"><div class="dot"></div>Estela Living LLC &nbsp;·&nbsp; Deal Pipeline</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('pipeline')" id="tabPipeline">Deal Pipeline</button>
+    <button class="nav-tab" onclick="switchTab('contacts')" id="tabContacts">Contacts</button>
+  </div>
   <div class="navbar-right">
     <div class="navbar-date" id="navDate"></div>
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
@@ -380,7 +414,21 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     </div>
   </aside>
   <!-- MAIN CONTENT -->
-  <div class="main-content" id="app"></div>
+  <div class="main-content">
+    <div id="app"></div>
+    <div id="contactsApp" style="display:none;"></div>
+  </div>
+</div>
+<!-- CONTACT ADD/EDIT MODAL -->
+<div class="overlay" id="contactModalOverlay" onclick="overlayClick(event,'contactModalOverlay')">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header"><h2 id="contactModalTitle">Add Contact</h2><button class="modal-close" onclick="closeOverlay('contactModalOverlay')">&#x2715;</button></div>
+    <div class="modal-body" id="contactModalBody" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('contactModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveContact()">Save Contact</button>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -665,6 +713,246 @@ const STAGES = [
   {key:'Cancelled',             cls:'cancelled',hdr:'sh-cancelled',badge:'background:#F3F4F6;color:#6B7280'},
 ];
 const SPV_LIST = ['Estela Living LLC','Estela Specs 1 LLC','Estela Specs 2 LLC','Estela Specs 3 LLC','Estela Specs 4 LLC','Estela Specs 6 LLC','Estela Specs 7 LLC','Estela Specs 9 LLC'];
+
+// ── TAB SWITCHING ────────────────────────────────────────────────────────────
+let activeTab = 'pipeline';
+function switchTab(tab){
+  activeTab = tab;
+  document.getElementById('tabPipeline').classList.toggle('active', tab==='pipeline');
+  document.getElementById('tabContacts').classList.toggle('active', tab==='contacts');
+  document.getElementById('app').style.display = tab==='pipeline' ? '' : 'none';
+  document.getElementById('contactsApp').style.display = tab==='contacts' ? '' : 'none';
+  if(tab==='contacts') renderContacts();
+}
+
+// ── CONTACTS ─────────────────────────────────────────────────────────────────
+const CONTACTS_LS_KEY = 'estelaContacts_v1';
+const fbContactsRef = firebase.database().ref('contacts');
+let contacts = JSON.parse(localStorage.getItem(CONTACTS_LS_KEY) || '[]');
+let nextContactId = Math.max(...contacts.map(c=>c.id), 0) + 1;
+let editingContactId = null;
+let _pendingContactWrite = false;
+
+function saveContacts(){
+  localStorage.setItem(CONTACTS_LS_KEY, JSON.stringify(contacts));
+  _pendingContactWrite = true;
+  fbContactsRef.set(contacts).then(()=>{_pendingContactWrite=false;}).catch(()=>{_pendingContactWrite=false;});
+}
+
+function startContactsListener(){
+  fbContactsRef.on('value', snapshot => {
+    if(_pendingContactWrite) return;
+    let data = snapshot.val();
+    if(data && !Array.isArray(data) && typeof data === 'object') data = Object.values(data);
+    if(data && Array.isArray(data) && data.length > 0){
+      contacts = data;
+      nextContactId = Math.max(...contacts.map(c=>c.id), 0) + 1;
+      localStorage.setItem(CONTACTS_LS_KEY, JSON.stringify(contacts));
+      if(activeTab === 'contacts') renderContacts();
+    }
+  });
+}
+
+function getLinkedDeals(contact){
+  if(contact.type==='title'){
+    return deals.filter(d=> d.titleCompany && contact.company && d.titleCompany.toLowerCase()===contact.company.toLowerCase());
+  }
+  if(contact.type==='seller'){
+    return deals.filter(d=> contact.linkedDealIds && contact.linkedDealIds.includes(d.id));
+  }
+  return [];
+}
+
+function renderContacts(){
+  const titleContacts = contacts.filter(c=>c.type==='title');
+  const sellerContacts = contacts.filter(c=>c.type==='seller');
+
+  let html = `<div class="contacts-page">
+    <div class="contacts-toolbar">
+      <h2>\u{1F4C7} Contacts Directory</h2>
+      <div class="contacts-toolbar-btns">
+        <input class="ct-search" id="ctSearch" placeholder="Search contacts..." oninput="renderContacts()"/>
+        <button class="btn btn-ghost" onclick="importContactsFromDeals()" style="font-size:11px;">\u{1F504} Import from Deals</button>
+        <button class="btn btn-primary" onclick="openAddContact('title')" style="font-size:11px;">+ Title Company</button>
+        <button class="btn btn-primary" onclick="openAddContact('seller')" style="font-size:11px;background:var(--orange);">+ Seller</button>
+      </div>
+    </div>`;
+
+  const q = (document.getElementById('ctSearch')?.value||'').toLowerCase();
+
+  const filteredTitle = q ? titleContacts.filter(c=>
+    (c.company||'').toLowerCase().includes(q) || (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.phone||'').includes(q)
+  ) : titleContacts;
+
+  const filteredSeller = q ? sellerContacts.filter(c=>
+    (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.phone||'').includes(q)
+  ) : sellerContacts;
+
+  // Title Companies section
+  html += `<div class="contacts-section">
+    <div class="contacts-section-hd">
+      <div class="contacts-section-title">\u{1F3E2} Title Companies <span class="contacts-section-badge">${filteredTitle.length}</span></div>
+    </div>`;
+  if(filteredTitle.length){
+    html += `<table class="contacts-table"><thead><tr>
+      <th>Company</th><th>Contact Name</th><th>Phone</th><th>Email</th><th>Notes</th><th>Linked Deals</th><th></th>
+    </tr></thead><tbody>`;
+    filteredTitle.forEach(c=>{
+      const linked = getLinkedDeals(c);
+      html += `<tr>
+        <td class="ct-name">${c.company||'—'}</td>
+        <td>${c.name||'—'}</td>
+        <td>${c.phone?`<a class="ct-link" href="tel:${c.phone}">${c.phone}</a>`:'—'}</td>
+        <td>${c.email?`<a class="ct-link" href="mailto:${c.email}">${c.email}</a>`:'—'}</td>
+        <td style="font-size:11px;color:var(--text-light);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(c.notes||'').replace(/"/g,'&quot;')}">${c.notes||'—'}</td>
+        <td><div class="ct-deals">${linked.length?linked.map(d=>`<span class="ct-deal-chip" onclick="switchTab('pipeline');setTimeout(()=>openEdit(${d.id}),100)">${d.address.split(',')[0]}</span>`).join(''):'<span style="color:var(--text-light);font-size:11px;font-style:italic;">None</span>'}</div></td>
+        <td class="ct-actions">
+          <button class="ct-btn" onclick="editContact(${c.id})" title="Edit">✏️</button>
+          <button class="ct-btn" onclick="deleteContact(${c.id})" title="Delete">\u{1F5D1}</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  } else {
+    html += `<div class="ct-empty">No title company contacts yet. Click "+ Title Company" to add one, or "Import from Deals" to pull from existing deal data.</div>`;
+  }
+  html += `</div>`;
+
+  // Sellers section
+  html += `<div class="contacts-section">
+    <div class="contacts-section-hd">
+      <div class="contacts-section-title">\u{1F464} Sellers <span class="contacts-section-badge">${filteredSeller.length}</span></div>
+    </div>`;
+  if(filteredSeller.length){
+    html += `<table class="contacts-table"><thead><tr>
+      <th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th>Notes</th><th>Linked Deals</th><th></th>
+    </tr></thead><tbody>`;
+    filteredSeller.forEach(c=>{
+      const linked = getLinkedDeals(c);
+      html += `<tr>
+        <td class="ct-name">${c.name||'—'}</td>
+        <td>${c.phone?`<a class="ct-link" href="tel:${c.phone}">${c.phone}</a>`:'—'}</td>
+        <td>${c.email?`<a class="ct-link" href="mailto:${c.email}">${c.email}</a>`:'—'}</td>
+        <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(c.address||'').replace(/"/g,'&quot;')}">${c.address||'—'}</td>
+        <td style="font-size:11px;color:var(--text-light);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(c.notes||'').replace(/"/g,'&quot;')}">${c.notes||'—'}</td>
+        <td><div class="ct-deals">${linked.length?linked.map(d=>`<span class="ct-deal-chip" onclick="switchTab('pipeline');setTimeout(()=>openEdit(${d.id}),100)">${d.address.split(',')[0]}</span>`).join(''):'<span style="color:var(--text-light);font-size:11px;font-style:italic;">None</span>'}</div></td>
+        <td class="ct-actions">
+          <button class="ct-btn" onclick="editContact(${c.id})" title="Edit">✏️</button>
+          <button class="ct-btn" onclick="deleteContact(${c.id})" title="Delete">\u{1F5D1}</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  } else {
+    html += `<div class="ct-empty">No seller contacts yet. Click "+ Seller" to add one.</div>`;
+  }
+  html += `</div></div>`;
+
+  document.getElementById('contactsApp').innerHTML = html;
+}
+
+function importContactsFromDeals(){
+  let imported = 0;
+  const existing = contacts.filter(c=>c.type==='title').map(c=>(c.company||'').toLowerCase());
+  deals.forEach(d=>{
+    if(d.titleCompany && !existing.includes(d.titleCompany.toLowerCase())){
+      contacts.push({
+        id: nextContactId++,
+        type: 'title',
+        company: d.titleCompany,
+        name: d.titleContact || '',
+        phone: d.titlePhone || '',
+        email: d.titleEmail || '',
+        address: '',
+        notes: '',
+        linkedDealIds: []
+      });
+      existing.push(d.titleCompany.toLowerCase());
+      imported++;
+    }
+  });
+  if(imported){
+    saveContacts();
+    renderContacts();
+    showToast(imported + ' title compan' + (imported===1?'y':'ies') + ' imported from deals', 'green');
+  } else {
+    showToast('No new title companies to import — all already exist.', 'green');
+  }
+}
+
+function openAddContact(type){
+  editingContactId = null;
+  const title = type==='title' ? 'Add Title Company Contact' : 'Add Seller Contact';
+  const companyField = type==='title' ? `<div class="form-group full"><label class="form-label">Company Name</label><input class="form-input" id="ct_company" placeholder="e.g. Pioneer Title"/></div>` : '';
+  const addressField = type==='seller' ? `<div class="form-group full"><label class="form-label">Address</label><input class="form-input" id="ct_address" placeholder="Seller address"/></div>` : '';
+
+  document.getElementById('contactModalTitle').textContent = title;
+  document.getElementById('contactModalBody').innerHTML = `
+    <input type="hidden" id="ct_type" value="${type}"/>
+    ${companyField}
+    <div class="form-group full"><label class="form-label">Contact Name</label><input class="form-input" id="ct_name" placeholder="Full name"/></div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ct_phone" placeholder="352-555-1234" type="tel"/></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ct_email" placeholder="email@example.com" type="email"/></div>
+    ${addressField}
+    <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="ct_notes" placeholder="Additional notes..." style="min-height:60px;"></textarea></div>
+  `;
+  document.getElementById('contactModalOverlay').classList.add('open');
+}
+
+function editContact(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  editingContactId = id;
+  openAddContact(c.type);
+  setTimeout(()=>{
+    const compEl = document.getElementById('ct_company');
+    if(compEl) compEl.value = c.company || '';
+    document.getElementById('ct_name').value = c.name || '';
+    document.getElementById('ct_phone').value = c.phone || '';
+    document.getElementById('ct_email').value = c.email || '';
+    const addrEl = document.getElementById('ct_address');
+    if(addrEl) addrEl.value = c.address || '';
+    document.getElementById('ct_notes').value = c.notes || '';
+    document.getElementById('contactModalTitle').textContent = c.type==='title' ? 'Edit Title Company Contact' : 'Edit Seller Contact';
+  }, 50);
+}
+
+function saveContact(){
+  const type = document.getElementById('ct_type').value;
+  const contact = {
+    id: editingContactId || nextContactId++,
+    type,
+    company: document.getElementById('ct_company')?.value.trim() || '',
+    name: document.getElementById('ct_name').value.trim(),
+    phone: document.getElementById('ct_phone').value.trim(),
+    email: document.getElementById('ct_email').value.trim(),
+    address: document.getElementById('ct_address')?.value.trim() || '',
+    notes: document.getElementById('ct_notes').value.trim(),
+    linkedDealIds: editingContactId ? (contacts.find(c=>c.id===editingContactId)?.linkedDealIds || []) : []
+  };
+  if(type==='title' && !contact.company){alert('Company name is required.');return;}
+  if(type==='seller' && !contact.name){alert('Contact name is required.');return;}
+
+  if(editingContactId){
+    const i = contacts.findIndex(c=>c.id===editingContactId);
+    if(i>-1) contacts[i] = contact;
+  } else {
+    contacts.push(contact);
+  }
+  saveContacts();
+  closeOverlay('contactModalOverlay');
+  renderContacts();
+  showToast('Contact saved!', 'green');
+}
+
+function deleteContact(id){
+  if(!confirm('Delete this contact?')) return;
+  contacts = contacts.filter(c=>c.id!==id);
+  saveContacts();
+  renderContacts();
+  showToast('Contact deleted.', 'green');
+}
+
 // MS House # — ERP code system
 const DEV_CODES = [
   {key:'002', label:'Marion Oaks', zip:'34473'},
@@ -2590,6 +2878,7 @@ document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',
 firebase.auth().signInAnonymously().then(()=>{
   console.log('[auth] Signed in anonymously');
   startFirebaseListener();
+  startContactsListener();
 }).catch(err=>{
   console.error('[auth] Anonymous sign-in failed:', err);
   updateSyncStatus('error');
