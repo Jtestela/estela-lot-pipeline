@@ -7,6 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <title>Estela Living — Deal Pipeline</title>
 <style>
 :root{--blue-dark:#1F4E79;--blue-mid:#2E75B6;--blue-light:#DBEAFE;--orange:#C55A11;--red-dark:#843C0C;--green-dark:#375623;--teal-dark:#0F766E;--purple:#5B3A8E;--gray-bg:#F4F6F9;--gray-border:#DDE1E7;--text:#1a1a2e;--text-light:#6B7280;--white:#fff;--red-alert:#DC2626;--yellow:#D97706;--green-ok:#16A34A;}
@@ -626,6 +627,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-body" id="reportBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('reportOverlay')">Close</button>
+      <button class="btn" onclick="exportPipelineXlsx()" style="background:#217346;color:#fff;">📥 Excel</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
     </div>
   </div>
@@ -638,6 +640,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-body" id="cashflowBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('cashflowOverlay')">Close</button>
+      <button class="btn" onclick="exportCashflowXlsx()" style="background:#217346;color:#fff;">📥 Excel</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
     </div>
   </div>
@@ -650,6 +653,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-body" id="closingsBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('closingsOverlay')">Close</button>
+      <button class="btn" onclick="exportClosingsXlsx()" style="background:#217346;color:#fff;">📥 Excel</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
     </div>
   </div>
@@ -662,6 +666,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <div class="modal-body" id="titleContactsBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOverlay('titleContactsOverlay')">Close</button>
+      <button class="btn" onclick="exportTitleContactsXlsx()" style="background:#217346;color:#fff;">📥 Excel</button>
       <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
     </div>
   </div>
@@ -2944,6 +2949,150 @@ function buildTitleContactsHTML(){
   });
 
   return html;
+}
+
+// ── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function xlsxDownload(wb, filename){
+  XLSX.writeFile(wb, filename);
+}
+function fmtDate(d){ return d ? new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : ''; }
+function daysOut(d){ return d ? diff(d) : null; }
+function daysText(d){
+  const n=daysOut(d);
+  if(n===null) return '';
+  if(n<0) return Math.abs(n)+'d overdue';
+  if(n===0) return 'Due Today';
+  return n+'d';
+}
+
+function exportPipelineXlsx(){
+  const wb = XLSX.utils.book_new();
+  const active = deals.filter(d=>d.stage!=='Cancelled');
+
+  // Sheet 1: Closings
+  const closing = active.filter(d=>d.close&&d.stage!=='Closed / Purchased'&&diff(d.close)<=7).sort((a,b)=>pd(a.close)-pd(b.close));
+  const closingData = closing.map(d=>({
+    'Property': d.address, 'SPV': d.spv||'', 'Title Company': d.titleCompany||'', 'Stage': d.stage,
+    'Close Date': fmtDate(d.close), 'Days': daysText(d.close), 'Amount': d.amount||0
+  }));
+  const ws1 = XLSX.utils.json_to_sheet(closingData.length ? closingData : [{'Property':'No overdue or upcoming closings'}]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Closings');
+
+  // Sheet 2: Escrow
+  const escrow = active.filter(d=>!d.escrowPaid&&d.escrow&&diff(d.escrow)<=7).sort((a,b)=>pd(a.escrow)-pd(b.escrow));
+  const escrowData = escrow.map(d=>({
+    'Property': d.address, 'SPV': d.spv||'', 'Title Company': d.titleCompany||'',
+    'Escrow Due': fmtDate(d.escrow), 'Days': daysText(d.escrow), 'Amount': d.amount||0
+  }));
+  const ws2 = XLSX.utils.json_to_sheet(escrowData.length ? escrowData : [{'Property':'No overdue or upcoming escrow deposits'}]);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Escrow');
+
+  // Sheet 3: Due Diligence
+  const ddStages = ['Due Diligences','Under Contract (Escrow)'];
+  const dd = active.filter(d=>d.dd&&diff(d.dd)<=10&&ddStages.includes(d.stage)).sort((a,b)=>pd(a.dd)-pd(b.dd));
+  const ddData = dd.map(d=>({
+    'Property': d.address, 'SPV': d.spv||'', 'Title Company': d.titleCompany||'',
+    'DD Expires': fmtDate(d.dd), 'Days': daysText(d.dd), 'Amount': d.amount||0
+  }));
+  const ws3 = XLSX.utils.json_to_sheet(ddData.length ? ddData : [{'Property':'No overdue or upcoming DD expirations'}]);
+  XLSX.utils.book_append_sheet(wb, ws3, 'Due Diligence');
+
+  const dateStr = TODAY.toISOString().slice(0,10);
+  xlsxDownload(wb, 'Pipeline_Report_'+dateStr+'.xlsx');
+  showToast('Pipeline Report exported to Excel','green');
+}
+
+function exportCashflowXlsx(){
+  const wb = XLSX.utils.book_new();
+  const active = deals.filter(d=>d.stage!=='Cancelled'&&d.stage!=='Closed / Purchased');
+
+  // All deals with closing amounts, grouped by SPV
+  const rows = active.filter(d=>d.close).sort((a,b)=>{
+    const sa=(a.spv||'').localeCompare(b.spv||'');
+    return sa!==0?sa:pd(a.close)-pd(b.close);
+  }).map(d=>({
+    'SPV': d.spv||'Unassigned', 'Property': d.address, 'Stage': d.stage,
+    'Close Date': fmtDate(d.close), 'Days Out': daysText(d.close), 'Amount': d.amount||0
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'SPV':'No active deals'}]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Cashflow by SPV');
+
+  // Summary sheet
+  const spvMap = {};
+  active.forEach(d=>{
+    const spv=d.spv||'Unassigned';
+    if(!spvMap[spv]) spvMap[spv]={count:0,total:0};
+    spvMap[spv].count++;
+    spvMap[spv].total+=d.amount||0;
+  });
+  const summary = Object.keys(spvMap).sort().map(spv=>({
+    'SPV': spv, 'Deals': spvMap[spv].count, 'Total Amount': spvMap[spv].total
+  }));
+  summary.push({'SPV':'TOTAL','Deals':active.length,'Total Amount':active.reduce((s,d)=>s+(d.amount||0),0)});
+  const ws2 = XLSX.utils.json_to_sheet(summary);
+  XLSX.utils.book_append_sheet(wb, ws2, 'SPV Summary');
+
+  const dateStr = TODAY.toISOString().slice(0,10);
+  xlsxDownload(wb, 'Cashflow_by_SPV_'+dateStr+'.xlsx');
+  showToast('Cashflow Report exported to Excel','green');
+}
+
+function exportClosingsXlsx(){
+  const wb = XLSX.utils.book_new();
+  const active = deals.filter(d=>d.stage!=='Cancelled'&&d.stage!=='Closed / Purchased'&&d.close);
+
+  // Summary by SPV
+  const spvTotals = {};
+  active.forEach(d=>{
+    const spv=d.spv||'Unassigned';
+    if(!spvTotals[spv]) spvTotals[spv]={count:0,total:0};
+    spvTotals[spv].count++;
+    spvTotals[spv].total+=d.amount||0;
+  });
+  const summary = Object.keys(spvTotals).sort().map(spv=>({
+    'SPV': spv, 'Deals': spvTotals[spv].count, 'Total': spvTotals[spv].total
+  }));
+  const grandTotal = active.reduce((s,d)=>s+(d.amount||0),0);
+  summary.push({'SPV':'TOTAL','Deals':active.length,'Total':grandTotal});
+  const ws1 = XLSX.utils.json_to_sheet(summary);
+  XLSX.utils.book_append_sheet(wb, ws1, 'SPV Summary');
+
+  // All closings by date
+  const sorted = [...active].sort((a,b)=>pd(a.close)-pd(b.close));
+  const rows = sorted.map(d=>({
+    'Close Date': fmtDate(d.close), 'Days': daysText(d.close), 'Property': d.address,
+    'SPV': d.spv||'', 'Title Company': d.titleCompany||'', 'Stage': d.stage, 'Amount': d.amount||0
+  }));
+  rows.push({'Close Date':'','Days':'','Property':'TOTAL','SPV':'','Title Company':'','Stage':'','Amount':grandTotal});
+  const ws2 = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws2, 'All Closings');
+
+  const dateStr = TODAY.toISOString().slice(0,10);
+  xlsxDownload(wb, 'Closings_Schedule_'+dateStr+'.xlsx');
+  showToast('Closings Schedule exported to Excel','green');
+}
+
+function exportTitleContactsXlsx(){
+  const wb = XLSX.utils.book_new();
+  const targetStages = ['Under Contract (Escrow)','Due Diligences','Clear to Close'];
+  const filtered = deals.filter(d=>targetStages.includes(d.stage));
+
+  const rows = filtered.sort((a,b)=>{
+    const si=targetStages.indexOf(a.stage)-targetStages.indexOf(b.stage);
+    return si!==0?si:(a.close&&b.close?pd(a.close)-pd(b.close):0);
+  }).map(d=>({
+    'Stage': d.stage, 'Property': d.address, 'Close Date': fmtDate(d.close), 'Days': daysText(d.close),
+    'Title Company': d.titleCompany||'', 'Contact': d.titleContact||'', 'Phone': d.titlePhone||'',
+    'Email': d.titleEmail||'', 'Amount': d.amount||0
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'Stage':'No deals in target stages'}]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Title Contacts');
+
+  const dateStr = TODAY.toISOString().slice(0,10);
+  xlsxDownload(wb, 'Title_Contacts_'+dateStr+'.xlsx');
+  showToast('Title Contacts exported to Excel','green');
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
