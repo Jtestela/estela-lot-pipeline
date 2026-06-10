@@ -497,8 +497,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
           <div class="form-group">
             <label class="form-label">MS House #</label>
             <div class="ms-house-row">
-              <span class="ms-house-display" id="f_msHouseDisplay">—</span>
+              <span class="ms-house-display" id="f_msHouseDisplay" onclick="enableMsHouseEdit()" title="Click to edit">—</span>
+              <input class="form-input ms-house-input" id="f_msHouseInput" style="display:none;width:130px;font-weight:700;font-size:13px;" placeholder="e.g. 00400263" onchange="saveMsHouseOverride()" onblur="finishMsHouseEdit()"/>
               <button type="button" class="btn-assign-ms" id="btnAssignMs" onclick="event.stopPropagation();assignMsHouse()">Assign #</button>
+              <button type="button" class="btn-assign-ms" id="btnEditMs" style="display:none;background:var(--orange);color:#fff;" onclick="event.stopPropagation();enableMsHouseEdit()">✏️</button>
             </div>
           </div>
           <div class="form-group full"><label class="form-label">📍 Google Maps Link</label><div style="display:flex;gap:6px;align-items:center;"><input class="form-input" id="f_mapLink" placeholder="Paste Google Maps URL" style="flex:1;"/><a id="f_mapBtn" href="#" target="_blank" rel="noopener" style="display:none;background:var(--blue-dark);color:#fff;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">🗺 Open Map</a></div></div>
@@ -1874,9 +1876,17 @@ function openEdit(id){
     tcInput.style.display='none';
     tcInput.value='';
   }
-  document.getElementById('f_titleContact').value=d.titleContact||'';
-  document.getElementById('f_titlePhone').value=d.titlePhone||'';
-  document.getElementById('f_titleEmail').value=d.titleEmail||'';
+  // Pull latest contact info from contacts directory (if the title company matches a known contact)
+  const matchedContact=d.titleCompany?contacts.find(c=>c.type==='title'&&c.company&&c.company.toLowerCase()===d.titleCompany.toLowerCase()):null;
+  if(matchedContact){
+    document.getElementById('f_titleContact').value=matchedContact.name||d.titleContact||'';
+    document.getElementById('f_titlePhone').value=matchedContact.phone||d.titlePhone||'';
+    document.getElementById('f_titleEmail').value=matchedContact.email||d.titleEmail||'';
+  } else {
+    document.getElementById('f_titleContact').value=d.titleContact||'';
+    document.getElementById('f_titlePhone').value=d.titlePhone||'';
+    document.getElementById('f_titleEmail').value=d.titleEmail||'';
+  }
   document.getElementById('f_orientation').value=d.orientation||'';
   document.getElementById('f_mapLink').value=d.mapLink||'';
   document.getElementById('f_sellerVerification').checked=!!d.sellerVerification;
@@ -1970,19 +1980,70 @@ function onTitleCompanySelect(sel){
 function updateMsHouseDisplay(){
   const deal=editingId?deals.find(d=>d.id===editingId):null;
   const display=document.getElementById('f_msHouseDisplay');
+  const input=document.getElementById('f_msHouseInput');
   const btn=document.getElementById('btnAssignMs');
+  const editBtn=document.getElementById('btnEditMs');
   if(!display||!btn) return;
+  // Always hide input when refreshing display
+  if(input) input.style.display='none';
   if(deal&&deal.msHouseNum){
+    display.style.display='';
     display.textContent=deal.msHouseNum;
-    display.title=devLabel(deal.development||deal.msHouseNum.substring(0,3));
+    display.title='Click to edit — '+devLabel(deal.development||deal.msHouseNum.substring(0,3));
     btn.textContent='✓ Assigned';
     btn.disabled=true;
+    if(editBtn) editBtn.style.display='inline-block';
   } else {
+    display.style.display='';
     display.textContent='—';
-    display.title='';
+    display.title='Click to enter manually';
     btn.textContent='Assign #';
     btn.disabled=false;
+    if(editBtn) editBtn.style.display='none';
   }
+}
+function enableMsHouseEdit(){
+  const deal=editingId?deals.find(d=>d.id===editingId):null;
+  const display=document.getElementById('f_msHouseDisplay');
+  const input=document.getElementById('f_msHouseInput');
+  const editBtn=document.getElementById('btnEditMs');
+  if(!input) return;
+  display.style.display='none';
+  input.style.display='block';
+  input.value=deal&&deal.msHouseNum?deal.msHouseNum:'';
+  if(editBtn) editBtn.style.display='none';
+  input.focus();
+  input.select();
+}
+function saveMsHouseOverride(){
+  if(!editingId) return;
+  const deal=deals.find(d=>d.id===editingId);
+  if(!deal) return;
+  const input=document.getElementById('f_msHouseInput');
+  const val=input.value.trim();
+  if(val){
+    deal.msHouseNum=val;
+    // Try to detect development from the override number
+    if(val.length>=3 && !deal.development){
+      const prefix=val.substring(0,3);
+      const devEl=document.getElementById('f_development');
+      if([...devEl.options].some(o=>o.value===prefix)) deal.development=prefix;
+    }
+  } else {
+    deal.msHouseNum='';
+  }
+  saveDeals();render();
+  updateMsHouseDisplay();
+  showToast(val?'MS House # updated: '+val:'MS House # cleared','green');
+}
+function finishMsHouseEdit(){
+  // Small delay to allow onchange to fire first
+  setTimeout(()=>{
+    const input=document.getElementById('f_msHouseInput');
+    if(input && input.style.display!=='none'){
+      saveMsHouseOverride();
+    }
+  },100);
 }
 function autoDetectDev(){
   const addr=document.getElementById('f_address').value;
