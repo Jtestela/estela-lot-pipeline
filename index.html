@@ -915,8 +915,8 @@ function openAddContact(type){
 function editContact(id){
   const c = contacts.find(x=>x.id===id);
   if(!c) return;
-  editingContactId = id;
   openAddContact(c.type);
+  editingContactId = id;   // Set AFTER openAddContact (which resets it to null)
   setTimeout(()=>{
     const compEl = document.getElementById('ct_company');
     if(compEl) compEl.value = c.company || '';
