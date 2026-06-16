@@ -398,6 +398,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
       <button class="sb-item" title="Title Contacts" onclick="openTitleContacts()">
         <span class="sb-icon">📞</span><span class="sb-label">Title Contacts</span>
       </button>
+      <button class="sb-item" title="Permitting & Recent Closings" onclick="exportPermittingClosingsXlsx()">
+        <span class="sb-icon">🏗</span><span class="sb-label">Permitting & Closings</span>
+      </button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-label">Tools</div>
@@ -3128,6 +3131,31 @@ function exportTitleContactsXlsx(){
   const dateStr = TODAY.toISOString().slice(0,10);
   xlsxDownload(wb, 'Title_Contacts_'+dateStr+'.xlsx');
   showToast('Title Contacts exported to Excel','green');
+}
+
+function exportPermittingClosingsXlsx(){
+  const wb = XLSX.utils.book_new();
+  const dateStr = TODAY.toISOString().slice(0,10);
+
+  // Sheet 1: Permitting
+  const permitting = deals.filter(d=>d.stage==='Permitting').sort((a,b)=>(a.address||'').localeCompare(b.address||''));
+  const permData = permitting.map(d=>({
+    'Address': d.address||'', 'Parcel ID': d.parcel||'', 'Google Maps Link': d.mapLink||''
+  }));
+  const ws1 = XLSX.utils.json_to_sheet(permData.length ? permData : [{'Address':'No deals in Permitting'}]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Permitting');
+
+  // Sheet 2: Closed in last 15 days
+  const cutoff = new Date(TODAY); cutoff.setDate(cutoff.getDate()-15);
+  const closed = deals.filter(d=>d.stage==='Closed / Purchased'&&d.close&&new Date(d.close+'T00:00:00')>=cutoff).sort((a,b)=>pd(b.close)-pd(a.close));
+  const closedData = closed.map(d=>({
+    'Address': d.address||'', 'Parcel ID': d.parcel||'', 'Close Date': fmtDate(d.close), 'Google Maps Link': d.mapLink||''
+  }));
+  const ws2 = XLSX.utils.json_to_sheet(closedData.length ? closedData : [{'Address':'No closings in last 15 days'}]);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Closed (Last 15 Days)');
+
+  xlsxDownload(wb, 'Permitting_Closings_'+dateStr+'.xlsx');
+  showToast('Permitting & Recent Closings exported to Excel','green');
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
