@@ -401,6 +401,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
       <button class="sb-item" title="Permitting & Recent Closings" onclick="exportPermittingClosingsXlsx()">
         <span class="sb-icon">🏗</span><span class="sb-label">Permitting & Closings</span>
       </button>
+      <button class="sb-item" title="Property Coordinates" onclick="exportCoordinatesXlsx()">
+        <span class="sb-icon">📍</span><span class="sb-label">Coordinates Export</span>
+      </button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-label">Tools</div>
@@ -3150,6 +3153,27 @@ function exportPermittingClosingsXlsx(){
 
   xlsxDownload(wb, 'Permitting_Closings_'+dateStr+'.xlsx');
   showToast('Permitting & Recent Closings exported to Excel','green');
+}
+
+function exportCoordinatesXlsx(){
+  const targetStages = ['Under Contract (Escrow)','Due Diligences','Clear to Close','Permitting','Closed / Purchased'];
+  const filtered = deals.filter(d=>targetStages.includes(d.stage));
+  const coordRegex = /([-]?\d+\.\d+)\s*,\s*([-]?\d+\.\d+)/;
+  const rows = filtered.map(d=>{
+    const m = (d.notes||'').match(coordRegex);
+    return {
+      'MS House #': d.msHouseNum||'',
+      'Address': d.address||'',
+      'Latitude': m ? m[1].substring(0,12) : '',
+      'Longitude': m ? m[2].substring(0,12) : ''
+    };
+  }).sort((a,b)=>(a['MS House #']||'').localeCompare(b['MS House #']||''));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'MS House #':'No deals found'}]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Coordinates');
+  const dateStr = TODAY.toISOString().slice(0,10);
+  xlsxDownload(wb, 'Property_Coordinates_'+dateStr+'.xlsx');
+  showToast('Property Coordinates exported to Excel','green');
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
