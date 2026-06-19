@@ -2163,6 +2163,21 @@ async function saveDeal(silent){
   }
   deal.attachments=pendingAttachments;
   if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
+  // Sync title company info to contacts directory
+  if(deal.titleCompany){
+    const existing=contacts.find(c=>c.type==='title'&&c.company&&c.company.toLowerCase()===deal.titleCompany.toLowerCase());
+    if(existing){
+      // Update contact if deal has newer/better info
+      if(deal.titleContact&&!existing.name) existing.name=deal.titleContact;
+      if(deal.titlePhone&&!existing.phone) existing.phone=deal.titlePhone;
+      if(deal.titleEmail&&!existing.email) existing.email=deal.titleEmail;
+      saveContacts();
+    } else {
+      // Create new contact from deal data
+      contacts.push({id:nextContactId++, type:'title', company:deal.titleCompany, name:deal.titleContact||'', phone:deal.titlePhone||'', email:deal.titleEmail||'', address:'', notes:'', linkedDealIds:[]});
+      saveContacts();
+    }
+  }
   saveDeals();render();
   if(!silent){closeOverlay('editOverlay');showToast('Deal saved!','green');}
   if(deal.stage==='Cancelled'&&oldStage!=='Cancelled') moveFolderToCancelled(deal);
