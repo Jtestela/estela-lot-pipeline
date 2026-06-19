@@ -2167,10 +2167,10 @@ async function saveDeal(silent){
   if(deal.titleCompany){
     const existing=contacts.find(c=>c.type==='title'&&c.company&&c.company.toLowerCase()===deal.titleCompany.toLowerCase());
     if(existing){
-      // Update contact if deal has newer/better info
-      if(deal.titleContact&&!existing.name) existing.name=deal.titleContact;
-      if(deal.titlePhone&&!existing.phone) existing.phone=deal.titlePhone;
-      if(deal.titleEmail&&!existing.email) existing.email=deal.titleEmail;
+      // Always update contact with latest info from deal form
+      if(deal.titleContact) existing.name=deal.titleContact;
+      if(deal.titlePhone) existing.phone=deal.titlePhone;
+      if(deal.titleEmail) existing.email=deal.titleEmail;
       saveContacts();
     } else {
       // Create new contact from deal data
@@ -3199,10 +3199,29 @@ function exportCoordinatesXlsx(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-const PATCH_VERSION = 3;
+const PATCH_VERSION = 4;
 document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 // One-time migration: stamp any unpatched deals so they're never touched by old logic
 (function(){let c=false;deals.forEach(d=>{if((d._patchedTo||0)<PATCH_VERSION){d._patchedTo=PATCH_VERSION;c=true;}});if(c)saveDeals();})();
+// One-time migration v4: backfill contacts directory from deal title company data
+(function(){
+  if(localStorage.getItem('_contactsBackfillV1')) return;
+  let changed=false;
+  deals.forEach(d=>{
+    if(!d.titleCompany) return;
+    const ex=contacts.find(c=>c.type==='title'&&c.company&&c.company.toLowerCase()===d.titleCompany.toLowerCase());
+    if(ex){
+      if(d.titleContact&&!ex.name){ex.name=d.titleContact;changed=true;}
+      if(d.titlePhone&&!ex.phone){ex.phone=d.titlePhone;changed=true;}
+      if(d.titleEmail&&!ex.email){ex.email=d.titleEmail;changed=true;}
+    } else {
+      contacts.push({id:nextContactId++,type:'title',company:d.titleCompany,name:d.titleContact||'',phone:d.titlePhone||'',email:d.titleEmail||'',address:'',notes:'',linkedDealIds:[]});
+      changed=true;
+    }
+  });
+  if(changed) saveContacts();
+  localStorage.setItem('_contactsBackfillV1','done');
+})();
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
 // ── FIREBASE ANONYMOUS AUTH + REAL-TIME LISTENER ──────────────────────────────
