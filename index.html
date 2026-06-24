@@ -470,6 +470,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
           <div class="form-group"><label class="form-label">Parcel ID</label><input class="form-input" id="f_parcel"/></div>
           <div class="form-group"><label class="form-label">Purchase Price ($)</label><input class="form-input" id="f_amount" type="number"/></div>
           <div class="form-group"><label class="form-label">Lot Premium ($)</label><input class="form-input" id="f_lotPremium" type="number" placeholder="0"/></div>
+          <div class="form-group"><label class="form-label">Lot Size (sqft)</label><input class="form-input" id="f_lotSize" placeholder="e.g. 10000"/></div>
+          <div class="form-group"><label class="form-label">Lot Feature</label>
+            <select class="form-select" id="f_lotFeature" onchange="autoSaveIfEditing()"><option value="">— Select —</option><option value="CO">Corner (CO)</option><option value="CD">Cul-de-sac (CD)</option><option value="PR">Preservation (PR)</option><option value="CN">Canal (CN)</option><option value="WF">Waterfront (WF)</option></select>
+          </div>
           <div class="form-group"><label class="form-label">Orientation</label>
             <select class="form-select" id="f_orientation"><option value="">— Select —</option><option value="Left Hand">Left Hand</option><option value="Right Hand">Right Hand</option></select>
           </div>
@@ -1766,6 +1770,8 @@ function openDetail(id){
     <div class="detail-row"><div class="detail-lbl">DD Due Date</div><div class="detail-val">${datePill(d.dd)}</div></div>
     <hr class="detail-divider"/>
     <div class="detail-row"><div class="detail-lbl">Lot Premium</div><div class="detail-val">${d.lotPremium?'$'+Number(d.lotPremium).toLocaleString():'—'}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Lot Size</div><div class="detail-val">${d.lotSize||'—'}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Lot Feature</div><div class="detail-val">${d.lotFeature?({'CO':'Corner','CD':'Cul-de-sac','PR':'Preservation','CN':'Canal','WF':'Waterfront'}[d.lotFeature]||d.lotFeature)+' ('+d.lotFeature+')':'—'}</div></div>
     <hr class="detail-divider"/>
     <div class="detail-row"><div class="detail-lbl">Seller Verification</div><div class="detail-val"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.sellerVerification?'checked':''} onchange="toggleCheck(event,${d.id},'sellerVerification')"> <span style="color:${d.sellerVerification?'var(--green-dark)':'var(--text-light)'}">${d.sellerVerification?'Verified':'Pending'}</span></label></div></div>
     <div class="detail-row"><div class="detail-lbl">Clean Title</div><div class="detail-val"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.cleanTitle?'checked':''} onchange="toggleCheck(event,${d.id},'cleanTitle')"> <span style="color:${d.cleanTitle?'var(--green-dark)':'var(--text-light)'}">${d.cleanTitle?'Clean':'Pending'}</span></label></div></div>
@@ -1853,6 +1859,8 @@ function openEdit(id){
   document.getElementById('f_parcel').value=d.parcel||'';
   document.getElementById('f_amount').value=d.amount||'';
   document.getElementById('f_lotPremium').value=d.lotPremium||'';
+  document.getElementById('f_lotSize').value=d.lotSize||'';
+  document.getElementById('f_lotFeature').value=d.lotFeature||'';
   document.getElementById('f_close').value=d.close||'';
   document.getElementById('f_escrow').value=d.escrow||'';
   document.getElementById('f_escrowPaid').value=d.escrowPaid?'true':'false';
@@ -1909,7 +1917,8 @@ function openEdit(id){
 }
 
 function clearForm(){
-  ['f_address','f_parcel','f_amount','f_lotPremium','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'].forEach(id=>{document.getElementById(id).value='';});
+  ['f_address','f_parcel','f_amount','f_lotPremium','f_lotSize','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('f_lotFeature').value='';
   ['f_sellerVerification','f_cleanTitle','f_lotWalkthrough','f_managerApproval'].forEach(id=>{document.getElementById(id).checked=false;});
   const mb=document.getElementById('f_mapBtn');if(mb){mb.style.display='none';mb.href='#';}
   document.getElementById('f_spv').value='';document.getElementById('f_escrowPaid').value='false';document.getElementById('f_orientation').value='';
@@ -2113,7 +2122,7 @@ function autoSaveIfEditing(){
 }
 // Attach auto-save listeners once DOM is ready
 (function(){
-  const fields=['f_address','f_parcel','f_amount','f_lotPremium','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'];
+  const fields=['f_address','f_parcel','f_amount','f_lotPremium','f_lotSize','f_close','f_escrow','f_dd','f_notes','f_spv_custom','f_titleCompany','f_titleContact','f_titlePhone','f_titleEmail','f_mapLink'];
   fields.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('input',()=>{
@@ -2140,7 +2149,7 @@ async function saveDeal(silent){
   const oldStage=existing?existing.stage:null;
   const newStage=document.getElementById('f_stage').value;
   const devVal=document.getElementById('f_development').value||detectDevelopment(address);
-  const deal={id:editingId||nextId++,stage:newStage,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,lotPremium:Number(document.getElementById('f_lotPremium').value)||0,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,sellerVerification:document.getElementById('f_sellerVerification').checked,cleanTitle:document.getElementById('f_cleanTitle').checked,lotWalkthrough:document.getElementById('f_lotWalkthrough').checked,managerApproval:document.getElementById('f_managerApproval').checked,development:devVal,msHouseNum:existing?existing.msHouseNum||'':'',stageHistory:existing?JSON.parse(JSON.stringify(existing.stageHistory||[])):[],_patchedTo:PATCH_VERSION};
+  const deal={id:editingId||nextId++,stage:newStage,address,parcel:document.getElementById('f_parcel').value.trim(),amount:Number(document.getElementById('f_amount').value)||0,lotPremium:Number(document.getElementById('f_lotPremium').value)||0,lotSize:document.getElementById('f_lotSize').value.trim(),lotFeature:document.getElementById('f_lotFeature').value,spv,titleCompany:document.getElementById('f_titleCompany').value.trim(),titleContact:document.getElementById('f_titleContact').value.trim(),titlePhone:document.getElementById('f_titlePhone').value.trim(),titleEmail:document.getElementById('f_titleEmail').value.trim(),orientation:document.getElementById('f_orientation').value,mapLink:document.getElementById('f_mapLink').value.trim(),close:document.getElementById('f_close').value,escrow:document.getElementById('f_escrow').value,escrowPaid:document.getElementById('f_escrowPaid').value==='true',dd:document.getElementById('f_dd').value,notes:document.getElementById('f_notes').value.trim(),attachments:pendingAttachments,sellerVerification:document.getElementById('f_sellerVerification').checked,cleanTitle:document.getElementById('f_cleanTitle').checked,lotWalkthrough:document.getElementById('f_lotWalkthrough').checked,managerApproval:document.getElementById('f_managerApproval').checked,development:devVal,msHouseNum:existing?existing.msHouseNum||'':'',stageHistory:existing?JSON.parse(JSON.stringify(existing.stageHistory||[])):[],_patchedTo:PATCH_VERSION};
   // Record stage change timestamp
   if(!existing){
     // New deal — record initial stage
