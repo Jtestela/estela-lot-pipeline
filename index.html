@@ -470,7 +470,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
           <div class="form-group"><label class="form-label">Parcel ID</label><input class="form-input" id="f_parcel"/></div>
           <div class="form-group"><label class="form-label">Purchase Price ($)</label><input class="form-input" id="f_amount" type="number"/></div>
           <div class="form-group"><label class="form-label">Lot Premium ($)</label><input class="form-input" id="f_lotPremium" type="number" placeholder="0"/></div>
-          <div class="form-group"><label class="form-label">Lot Size (sqft)</label><input class="form-input" id="f_lotSize" placeholder="e.g. 10000"/></div>
+          <div class="form-group"><label class="form-label">Lot Size (acres)</label><input class="form-input" id="f_lotSize" placeholder="e.g. 0.25"/></div>
           <div class="form-group"><label class="form-label">Lot Feature</label>
             <select class="form-select" id="f_lotFeature" onchange="autoSaveIfEditing()"><option value="">— Select —</option><option value="CO">Corner (CO)</option><option value="CD">Cul-de-sac (CD)</option><option value="PR">Preservation (PR)</option><option value="CN">Canal (CN)</option><option value="WF">Waterfront (WF)</option></select>
           </div>
@@ -1770,7 +1770,7 @@ function openDetail(id){
     <div class="detail-row"><div class="detail-lbl">DD Due Date</div><div class="detail-val">${datePill(d.dd)}</div></div>
     <hr class="detail-divider"/>
     <div class="detail-row"><div class="detail-lbl">Lot Premium</div><div class="detail-val">${d.lotPremium?'$'+Number(d.lotPremium).toLocaleString():'—'}</div></div>
-    <div class="detail-row"><div class="detail-lbl">Lot Size</div><div class="detail-val">${d.lotSize||'—'}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Lot Size</div><div class="detail-val">${d.lotSize?d.lotSize+' acres':'—'}</div></div>
     <div class="detail-row"><div class="detail-lbl">Lot Feature</div><div class="detail-val">${d.lotFeature?({'CO':'Corner','CD':'Cul-de-sac','PR':'Preservation','CN':'Canal','WF':'Waterfront'}[d.lotFeature]||d.lotFeature)+' ('+d.lotFeature+')':'—'}</div></div>
     <hr class="detail-divider"/>
     <div class="detail-row"><div class="detail-lbl">Seller Verification</div><div class="detail-val"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.sellerVerification?'checked':''} onchange="toggleCheck(event,${d.id},'sellerVerification')"> <span style="color:${d.sellerVerification?'var(--green-dark)':'var(--text-light)'}">${d.sellerVerification?'Verified':'Pending'}</span></label></div></div>
