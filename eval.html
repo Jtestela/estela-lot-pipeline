@@ -135,6 +135,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
             <option value="Across street">Across street</option>
             <option value="Not visible / Needs extension">Not visible / Needs extension</option>
           </select>
+          <div class="radio-group" style="margin-top:6px;">
+            <div class="radio-opt"><input type="radio" name="electricSide" id="es_left" value="Left"/><label for="es_left">Left</label></div>
+            <div class="radio-opt"><input type="radio" name="electricSide" id="es_right" value="Right"/><label for="es_right">Right</label></div>
+          </div>
           <input class="field-input" id="ea_electricDetail" placeholder="Additional details (optional)" style="margin-top:6px;"/>
         </div>
 
@@ -147,6 +151,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
             <option value="Across street">Across street</option>
             <option value="Not visible / Needs extension">Not visible / Needs extension</option>
           </select>
+          <div class="radio-group" style="margin-top:6px;">
+            <div class="radio-opt"><input type="radio" name="waterSide" id="ws_left" value="Left"/><label for="ws_left">Left</label></div>
+            <div class="radio-opt"><input type="radio" name="waterSide" id="ws_right" value="Right"/><label for="ws_right">Right</label></div>
+          </div>
           <input class="field-input" id="ea_waterDetail" placeholder="Additional details (optional)" style="margin-top:6px;"/>
         </div>
       </div>
@@ -297,8 +305,10 @@ async function submitAssessment(e){
     structures:getRadioVal('structures'),
     structuresDetail:document.getElementById('ea_structuresDetail').value.trim(),
     electric:document.getElementById('ea_electric').value,
+    electricSide:getRadioVal('electricSide'),
     electricDetail:document.getElementById('ea_electricDetail').value.trim(),
     water:document.getElementById('ea_water').value,
+    waterSide:getRadioVal('waterSide'),
     waterDetail:document.getElementById('ea_waterDetail').value.trim(),
     tortoise:getRadioVal('tortoise'),
     tortoiseDetail:document.getElementById('ea_tortoiseDetail').value.trim(),

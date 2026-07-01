@@ -1824,8 +1824,8 @@ function openDetail(id){
     <div class="detail-row"><div class="detail-lbl">Adjacent Lots</div><div class="detail-val">${a.adjLots||'—'}${a.adjLotsDetail?' — '+a.adjLotsDetail:''}</div></div>
     <div class="detail-row"><div class="detail-lbl">Fill Dirt</div><div class="detail-val">${a.fillDirt||'—'}${a.fillDirtDetail?' — '+a.fillDirtDetail:''}</div></div>
     <div class="detail-row"><div class="detail-lbl">Structures</div><div class="detail-val">${a.structures||'—'}${a.structuresDetail?' — '+a.structuresDetail:''}</div></div>
-    <div class="detail-row"><div class="detail-lbl">Electric</div><div class="detail-val">${a.electric||'—'}${a.electricDetail?' — '+a.electricDetail:''}</div></div>
-    <div class="detail-row"><div class="detail-lbl">Water</div><div class="detail-val">${a.water||'—'}${a.waterDetail?' — '+a.waterDetail:''}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Electric</div><div class="detail-val">${a.electric||'—'}${a.electricSide?' ('+a.electricSide+')':''}${a.electricDetail?' — '+a.electricDetail:''}</div></div>
+    <div class="detail-row"><div class="detail-lbl">Water</div><div class="detail-val">${a.water||'—'}${a.waterSide?' ('+a.waterSide+')':''}${a.waterDetail?' — '+a.waterDetail:''}</div></div>
     <div class="detail-row"><div class="detail-lbl">Tortoise</div><div class="detail-val">${a.tortoise||'—'}${a.tortoiseDetail?' — '+a.tortoiseDetail:''}</div></div>
     <div class="detail-row"><div class="detail-lbl">Trees</div><div class="detail-val">${a.trees||'—'}${a.treesDetail?' — '+a.treesDetail:''}</div></div>
     ${a.comments?`<div class="detail-row"><div class="detail-lbl">Comments</div><div class="detail-val">${a.comments}</div></div>`:''}`:''})()}
@@ -1999,8 +1999,8 @@ function loadSiteEvalSection(dealId){
         <div class="eval-row"><span class="eval-lbl">Adjacent Lots</span><span class="eval-val">${a.adjLots||'—'}${a.adjLotsDetail?' — '+a.adjLotsDetail:''}</span></div>
         <div class="eval-row"><span class="eval-lbl">Fill Dirt / Crown</span><span class="eval-val">${a.fillDirt||'—'}${a.fillDirtDetail?' — '+a.fillDirtDetail:''}</span></div>
         <div class="eval-row"><span class="eval-lbl">Structures on Lot</span><span class="eval-val">${a.structures||'—'}${a.structuresDetail?' — '+a.structuresDetail:''}</span></div>
-        <div class="eval-row"><span class="eval-lbl">Electric Service</span><span class="eval-val">${a.electric||'—'}${a.electricDetail?' — '+a.electricDetail:''}</span></div>
-        <div class="eval-row"><span class="eval-lbl">Water Service</span><span class="eval-val">${a.water||'—'}${a.waterDetail?' — '+a.waterDetail:''}</span></div>
+        <div class="eval-row"><span class="eval-lbl">Electric Service</span><span class="eval-val">${a.electric||'—'}${a.electricSide?' ('+a.electricSide+')':''}${a.electricDetail?' — '+a.electricDetail:''}</span></div>
+        <div class="eval-row"><span class="eval-lbl">Water Service</span><span class="eval-val">${a.water||'—'}${a.waterSide?' ('+a.waterSide+')':''}${a.waterDetail?' — '+a.waterDetail:''}</span></div>
         <div class="eval-row"><span class="eval-lbl">Tortoise Burrow</span><span class="eval-val">${a.tortoise||'—'}${a.tortoiseDetail?' — '+a.tortoiseDetail:''}</span></div>
         <div class="eval-row"><span class="eval-lbl">Trees to Remove</span><span class="eval-val">${a.trees||'—'}${a.treesDetail?' — '+a.treesDetail:''}</span></div>
         ${a.comments?`<div style="margin-top:8px;padding:8px;background:#fff;border-radius:6px;font-size:12px;"><strong>Comments:</strong> ${a.comments}</div>`:''}
