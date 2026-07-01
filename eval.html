@@ -230,17 +230,24 @@ function getRadioVal(name){
 
 async function init(){
   if(!dealId){
+    console.log('[eval] No deal ID in URL');
     showError();
     return;
   }
+  console.log('[eval] Looking for deal ID:', dealId);
   try{
     await firebase.auth().signInAnonymously();
+    console.log('[eval] Auth OK');
     const snap=await firebase.database().ref('deals').once('value');
     let allDeals=snap.val();
+    console.log('[eval] Raw deals type:', typeof allDeals, 'isArray:', Array.isArray(allDeals));
     if(allDeals && !Array.isArray(allDeals) && typeof allDeals==='object') allDeals=Object.values(allDeals);
-    if(!allDeals||!Array.isArray(allDeals)){showError();return;}
-    currentDeal=allDeals.find(d=>String(d.id)===dealId);
-    if(!currentDeal){showError();return;}
+    if(!allDeals||!Array.isArray(allDeals)){console.log('[eval] No deals found');showError();return;}
+    allDeals=allDeals.filter(d=>d!=null);
+    console.log('[eval] Deals count:', allDeals.length, 'IDs:', allDeals.map(d=>d.id));
+    currentDeal=allDeals.find(d=>d&&String(d.id)===dealId);
+    if(!currentDeal){console.log('[eval] Deal not found for ID:', dealId);showError();return;}
+    console.log('[eval] Found deal:', currentDeal.address);
 
     document.getElementById('propAddress').textContent=currentDeal.address||'—';
     const dev=currentDeal.development?devLabel(currentDeal.development):'';
