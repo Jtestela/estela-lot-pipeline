@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<title>Site Assessment — Estela Living</title>
+<style>
+:root{--blue-dark:#1F4E79;--blue-mid:#2E75B6;--blue-light:#DBEAFE;--orange:#C55A11;--green-dark:#375623;--green-ok:#16A34A;--gray-bg:#F4F6F9;--gray-border:#DDE1E7;--text:#1a1a2e;--text-light:#6B7280;--white:#fff;--red-alert:#DC2626;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var(--text);min-height:100vh;}
+.header{background:var(--blue-dark);padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.header-logo{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.header-title{color:#fff;font-size:16px;font-weight:700;}
+.header-sub{color:#93C5FD;font-size:11px;font-weight:500;}
+.container{max-width:600px;margin:0 auto;padding:16px;}
+.deal-banner{background:var(--white);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid var(--blue-mid);}
+.deal-address{font-size:18px;font-weight:700;color:var(--blue-dark);}
+.deal-neighborhood{font-size:13px;color:var(--text-light);margin-top:2px;}
+.deal-parcel{font-size:12px;color:var(--text-light);margin-top:2px;}
+.form-card{background:var(--white);border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;}
+.form-card h2{font-size:14px;font-weight:700;color:var(--blue-dark);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--blue-light);}
+.field{margin-bottom:16px;}
+.field:last-child{margin-bottom:0;}
+.field-label{display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.field-input,.field-select,.field-textarea{width:100%;border:1px solid var(--gray-border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--text);background:var(--white);transition:border-color .15s;}
+.field-input:focus,.field-select:focus,.field-textarea:focus{outline:none;border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(46,117,182,.15);}
+.field-textarea{min-height:100px;resize:vertical;}
+.field-hint{font-size:11px;color:var(--text-light);margin-top:4px;}
+.radio-group{display:flex;gap:8px;flex-wrap:wrap;}
+.radio-opt{flex:1;min-width:80px;}
+.radio-opt input{display:none;}
+.radio-opt label{display:block;text-align:center;padding:10px 8px;border:2px solid var(--gray-border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
+.radio-opt input:checked+label{border-color:var(--blue-mid);background:var(--blue-light);color:var(--blue-dark);}
+.btn-submit{width:100%;padding:14px;background:var(--blue-dark);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;margin-bottom:8px;}
+.btn-submit:hover{background:var(--blue-mid);}
+.btn-submit:disabled{background:var(--text-light);cursor:not-allowed;}
+.success-card{background:#DCFCE7;border:2px solid var(--green-ok);border-radius:12px;padding:24px;text-align:center;display:none;}
+.success-card .success-icon{font-size:48px;margin-bottom:8px;}
+.success-card h2{color:var(--green-dark);font-size:18px;margin-bottom:4px;}
+.success-card p{color:var(--text-light);font-size:13px;}
+.error-card{background:#FEE2E2;border:2px solid var(--red-alert);border-radius:12px;padding:24px;text-align:center;}
+.error-card .error-icon{font-size:48px;margin-bottom:8px;}
+.error-card h2{color:var(--red-alert);font-size:18px;margin-bottom:4px;}
+.error-card p{color:var(--text-light);font-size:13px;}
+.loading{text-align:center;padding:60px 20px;color:var(--text-light);font-size:14px;}
+.pm-field{display:flex;gap:10px;}
+.pm-field .field{flex:1;}
+.already-submitted{background:#FEF3C7;border:2px solid #D97706;border-radius:12px;padding:20px;text-align:center;display:none;}
+.already-submitted h2{color:#92400E;font-size:16px;margin-bottom:4px;}
+.already-submitted p{color:var(--text-light);font-size:13px;}
+@media(max-width:400px){.pm-field{flex-direction:column;}.pm-field .field{flex:none;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-logo">🏠</div>
+  <div>
+    <div class="header-title">Site Assessment</div>
+    <div class="header-sub">Estela Living LLC</div>
+  </div>
+</div>
+
+<div class="container" id="mainContainer">
+  <div class="loading" id="loadingState">Loading property details...</div>
+
+  <div id="errorState" style="display:none;" class="error-card">
+    <div class="error-icon">⚠️</div>
+    <h2>Invalid Link</h2>
+    <p>This assessment link is not valid or the property was not found. Please contact your project coordinator for a new link.</p>
+  </div>
+
+  <div id="formState" style="display:none;">
+    <div class="deal-banner">
+      <div class="deal-address" id="propAddress">—</div>
+      <div class="deal-neighborhood" id="propNeighborhood">—</div>
+      <div class="deal-parcel" id="propParcel">—</div>
+    </div>
+
+    <div class="already-submitted" id="alreadySubmitted">
+      <h2>Assessment Already Submitted</h2>
+      <p>A site assessment was already submitted for this property. You can submit a new one below which will replace the previous submission.</p>
+    </div>
+
+    <form id="evalForm" onsubmit="submitAssessment(event)">
+      <div class="form-card">
+        <h2>Site Conditions</h2>
+
+        <div class="field">
+          <label class="field-label">Adjacent Lots Conditions</label>
+          <select class="field-select" id="ea_adjLots">
+            <option value="">— Select —</option>
+            <option value="Vacant - Clear">Vacant - Clear</option>
+            <option value="Vacant - Overgrown">Vacant - Overgrown</option>
+            <option value="Developed - Occupied">Developed - Occupied</option>
+            <option value="Developed - Vacant">Developed - Vacant</option>
+            <option value="Under Construction">Under Construction</option>
+            <option value="Mixed">Mixed</option>
+          </select>
+          <input class="field-input" id="ea_adjLotsDetail" placeholder="Additional details (optional)" style="margin-top:6px;"/>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Est. Fill Dirt / Crown of Road</label>
+          <div class="radio-group" id="ea_fillDirtGroup">
+            <div class="radio-opt"><input type="radio" name="fillDirt" id="fd_none" value="None needed"/><label for="fd_none">None needed</label></div>
+            <div class="radio-opt"><input type="radio" name="fillDirt" id="fd_minor" value="Minor"/><label for="fd_minor">Minor</label></div>
+            <div class="radio-opt"><input type="radio" name="fillDirt" id="fd_moderate" value="Moderate"/><label for="fd_moderate">Moderate</label></div>
+            <div class="radio-opt"><input type="radio" name="fillDirt" id="fd_significant" value="Significant"/><label for="fd_significant">Significant</label></div>
+          </div>
+          <input class="field-input" id="ea_fillDirtDetail" placeholder="Additional details (optional)" style="margin-top:6px;"/>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Any Structures on Lot</label>
+          <div class="radio-group">
+            <div class="radio-opt"><input type="radio" name="structures" id="st_no" value="No"/><label for="st_no">No</label></div>
+            <div class="radio-opt"><input type="radio" name="structures" id="st_yes" value="Yes"/><label for="st_yes">Yes</label></div>
+          </div>
+          <input class="field-input" id="ea_structuresDetail" placeholder="If yes, describe structures..." style="margin-top:6px;"/>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2>Utilities</h2>
+
+        <div class="field">
+          <label class="field-label">Electric Service Location</label>
+          <select class="field-select" id="ea_electric">
+            <option value="">— Select —</option>
+            <option value="At lot / On-site">At lot / On-site</option>
+            <option value="Street / Adjacent">Street / Adjacent</option>
+            <option value="Across street">Across street</option>
+            <option value="Not visible / Needs extension">Not visible / Needs extension</option>
+          </select>
+          <input class="field-input" id="ea_electricDetail" placeholder="Additional details (optional)" style="margin-top:6px;"/>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Water Service Location</label>
+          <select class="field-select" id="ea_water">
+            <option value="">— Select —</option>
+            <option value="At lot / On-site">At lot / On-site</option>
+            <option value="Street / Adjacent">Street / Adjacent</option>
+            <option value="Across street">Across street</option>
+            <option value="Not visible / Needs extension">Not visible / Needs extension</option>
+          </select>
+          <input class="field-input" id="ea_waterDetail" placeholder="Additional details (optional)" style="margin-top:6px;"/>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2>Environmental</h2>
+
+        <div class="field">
+          <label class="field-label">Tortoise Burrow Presence</label>
+          <div class="radio-group">
+            <div class="radio-opt"><input type="radio" name="tortoise" id="tb_no" value="No"/><label for="tb_no">No</label></div>
+            <div class="radio-opt"><input type="radio" name="tortoise" id="tb_yes" value="Yes"/><label for="tb_yes">Yes</label></div>
+            <div class="radio-opt"><input type="radio" name="tortoise" id="tb_possible" value="Possible"/><label for="tb_possible">Possible</label></div>
+          </div>
+          <input class="field-input" id="ea_tortoiseDetail" placeholder="If yes/possible, describe location and size..." style="margin-top:6px;"/>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Existing Trees to Be Removed</label>
+          <div class="radio-group">
+            <div class="radio-opt"><input type="radio" name="trees" id="tr_none" value="None"/><label for="tr_none">None</label></div>
+            <div class="radio-opt"><input type="radio" name="trees" id="tr_few" value="Few (1-3)"/><label for="tr_few">Few (1-3)</label></div>
+            <div class="radio-opt"><input type="radio" name="trees" id="tr_several" value="Several (4+)"/><label for="tr_several">Several (4+)</label></div>
+            <div class="radio-opt"><input type="radio" name="trees" id="tr_heavy" value="Heavy clearing"/><label for="tr_heavy">Heavy</label></div>
+          </div>
+          <input class="field-input" id="ea_treesDetail" placeholder="Describe tree types, sizes, protected species..." style="margin-top:6px;"/>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2>Comments & Signature</h2>
+
+        <div class="field">
+          <label class="field-label">Additional Comments</label>
+          <textarea class="field-textarea" id="ea_comments" placeholder="Any additional observations, concerns, or recommendations..."></textarea>
+        </div>
+
+        <div class="pm-field">
+          <div class="field">
+            <label class="field-label">PM Name</label>
+            <input class="field-input" id="ea_pmName" placeholder="Your full name" required/>
+          </div>
+          <div class="field">
+            <label class="field-label">Date</label>
+            <input class="field-input" type="date" id="ea_date" required/>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btnSubmit">Submit Site Assessment</button>
+      <p style="text-align:center;font-size:11px;color:var(--text-light);margin-bottom:24px;">Your assessment will be sent to the project coordinator.</p>
+    </form>
+  </div>
+
+  <div class="success-card" id="successState">
+    <div class="success-icon">✅</div>
+    <h2>Assessment Submitted</h2>
+    <p>Your site assessment has been recorded. Thank you!</p>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyCiifdrc_F0xaAw0lMYNU7zZwLxmjbsTpE",
+  authDomain: "estela-lot-pipeline.firebaseapp.com",
+  databaseURL: "https://estela-lot-pipeline-default-rtdb.firebaseio.com",
+  projectId: "estela-lot-pipeline",
+  storageBucket: "estela-lot-pipeline.firebasestorage.app",
+  messagingSenderId: "313594205640",
+  appId: "1:313594205640:web:f332efde4bf60ddd985cfd"
+});
+
+const params = new URLSearchParams(window.location.search);
+const dealId = params.get('deal');
+let currentDeal = null;
+
+function getRadioVal(name){
+  const el=document.querySelector(`input[name="${name}"]:checked`);
+  return el?el.value:'';
+}
+
+async function init(){
+  if(!dealId){
+    showError();
+    return;
+  }
+  try{
+    await firebase.auth().signInAnonymously();
+    const snap=await firebase.database().ref('deals').once('value');
+    let allDeals=snap.val();
+    if(allDeals && !Array.isArray(allDeals) && typeof allDeals==='object') allDeals=Object.values(allDeals);
+    if(!allDeals||!Array.isArray(allDeals)){showError();return;}
+    currentDeal=allDeals.find(d=>String(d.id)===dealId);
+    if(!currentDeal){showError();return;}
+
+    document.getElementById('propAddress').textContent=currentDeal.address||'—';
+    const dev=currentDeal.development?devLabel(currentDeal.development):'';
+    document.getElementById('propNeighborhood').textContent=dev||currentDeal.neighborhood||'';
+    document.getElementById('propParcel').textContent=currentDeal.parcel?'Parcel: '+currentDeal.parcel:'';
+
+    document.getElementById('ea_date').value=new Date().toISOString().slice(0,10);
+
+    const existingSnap=await firebase.database().ref('siteAssessments/'+dealId).once('value');
+    if(existingSnap.val()){
+      document.getElementById('alreadySubmitted').style.display='block';
+    }
+
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('formState').style.display='block';
+  }catch(e){
+    console.error(e);
+    showError();
+  }
+}
+
+function devLabel(code){
+  const map={'002':'Marion Oaks','003':'Ocala Waterways','004':'Palm Coast','007':'Rolling Hills'};
+  return map[code]||'';
+}
+
+function showError(){
+  document.getElementById('loadingState').style.display='none';
+  document.getElementById('errorState').style.display='block';
+}
+
+async function submitAssessment(e){
+  e.preventDefault();
+  const btn=document.getElementById('btnSubmit');
+  btn.disabled=true;
+  btn.textContent='Submitting...';
+
+  const assessment={
+    dealId:Number(dealId),
+    address:currentDeal.address||'',
+    adjLots:document.getElementById('ea_adjLots').value,
+    adjLotsDetail:document.getElementById('ea_adjLotsDetail').value.trim(),
+    fillDirt:getRadioVal('fillDirt'),
+    fillDirtDetail:document.getElementById('ea_fillDirtDetail').value.trim(),
+    structures:getRadioVal('structures'),
+    structuresDetail:document.getElementById('ea_structuresDetail').value.trim(),
+    electric:document.getElementById('ea_electric').value,
+    electricDetail:document.getElementById('ea_electricDetail').value.trim(),
+    water:document.getElementById('ea_water').value,
+    waterDetail:document.getElementById('ea_waterDetail').value.trim(),
+    tortoise:getRadioVal('tortoise'),
+    tortoiseDetail:document.getElementById('ea_tortoiseDetail').value.trim(),
+    trees:getRadioVal('trees'),
+    treesDetail:document.getElementById('ea_treesDetail').value.trim(),
+    comments:document.getElementById('ea_comments').value.trim(),
+    pmName:document.getElementById('ea_pmName').value.trim(),
+    date:document.getElementById('ea_date').value,
+    submittedAt:new Date().toISOString(),
+    status:'submitted'
+  };
+
+  try{
+    await firebase.database().ref('siteAssessments/'+dealId).set(assessment);
+    document.getElementById('formState').style.display='none';
+    document.getElementById('successState').style.display='block';
+  }catch(err){
+    console.error(err);
+    btn.disabled=false;
+    btn.textContent='Submit Site Assessment';
+    alert('Error submitting assessment. Please try again.');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
