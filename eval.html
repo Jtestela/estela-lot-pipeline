@@ -77,6 +77,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
       <div class="deal-address" id="propAddress">—</div>
       <div class="deal-neighborhood" id="propNeighborhood">—</div>
       <div class="deal-parcel" id="propParcel">—</div>
+      <a id="propMapLink" href="#" target="_blank" style="display:none;margin-top:8px;inline-size:fit-content;background:var(--blue-mid);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;display:none;align-items:center;gap:6px;">📍 Open in Google Maps</a>
     </div>
 
     <div class="already-submitted" id="alreadySubmitted">
@@ -261,6 +262,15 @@ async function init(){
     const dev=currentDeal.development?devLabel(currentDeal.development):'';
     document.getElementById('propNeighborhood').textContent=dev||currentDeal.neighborhood||'';
     document.getElementById('propParcel').textContent=currentDeal.parcel?'Parcel: '+currentDeal.parcel:'';
+
+    const mapEl=document.getElementById('propMapLink');
+    if(currentDeal.mapLink){
+      mapEl.href=currentDeal.mapLink;
+      mapEl.style.display='inline-flex';
+    } else {
+      const addr=encodeURIComponent(currentDeal.address||'');
+      if(addr){mapEl.href='https://www.google.com/maps/search/?api=1&query='+addr;mapEl.style.display='inline-flex';}
+    }
 
     document.getElementById('ea_date').value=new Date().toISOString().slice(0,10);
 
