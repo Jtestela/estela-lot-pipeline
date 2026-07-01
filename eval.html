@@ -256,10 +256,12 @@ async function init(){
 
     document.getElementById('ea_date').value=new Date().toISOString().slice(0,10);
 
-    const existingSnap=await firebase.database().ref('siteAssessments/'+dealId).once('value');
-    if(existingSnap.val()){
-      document.getElementById('alreadySubmitted').style.display='block';
-    }
+    try{
+      const existingSnap=await firebase.database().ref('siteAssessments/'+dealId).once('value');
+      if(existingSnap.val()){
+        document.getElementById('alreadySubmitted').style.display='block';
+      }
+    }catch(e){console.warn('[eval] Could not check existing assessment:', e.message);}
 
     document.getElementById('loadingState').style.display='none';
     document.getElementById('formState').style.display='block';
