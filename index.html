@@ -22,6 +22,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
 .btn-nav{border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;}
 .btn-add{background:#4FC3F7;color:var(--blue-dark);}
 .btn-nav:hover{opacity:.85;}
+.search-box{position:relative;display:flex;align-items:center;}
+.search-input{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 28px 6px 12px;font-size:12px;color:#fff;width:200px;transition:width .2s,background .15s;}
+.search-input::placeholder{color:rgba(255,255,255,.5);}
+.search-input:focus{outline:none;background:rgba(255,255,255,.25);width:260px;border-color:rgba(255,255,255,.5);}
+.search-icon{position:absolute;right:8px;font-size:12px;opacity:.5;pointer-events:none;}
+.search-clear{position:absolute;right:24px;background:none;border:none;color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;padding:2px 4px;}
+.search-clear:hover{color:#fff;}
+.deal-card.search-highlight{box-shadow:0 0 0 2px var(--orange),0 2px 8px rgba(197,90,17,.3);}
+.stage-col.search-hidden{display:none;}
 /* SIDEBAR */
 .app-layout{display:flex;flex:1;min-height:0;}
 .sidebar{width:220px;background:var(--blue-dark);display:flex;flex-direction:column;position:sticky;top:54px;height:calc(100vh - 54px);z-index:90;overflow-y:auto;overflow-x:hidden;flex-shrink:0;border-right:1px solid rgba(255,255,255,.1);}
@@ -369,6 +378,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray-bg);color:var
     <button class="nav-tab" onclick="switchTab('contacts')" id="tabContacts">Contacts</button>
   </div>
   <div class="navbar-right">
+    <div class="search-box"><input class="search-input" id="dealSearch" type="text" placeholder="Search deals..." oninput="onDealSearch()"/><span class="search-icon">🔍</span><button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none;">✕</button></div>
     <div class="navbar-date" id="navDate"></div>
     <button class="btn-nav btn-add" onclick="openAddDeal()">+ Add Deal</button>
   </div>
@@ -1738,7 +1748,8 @@ function render(){
   const scrollPos={};
   document.querySelectorAll('.stage-body[data-stage]').forEach(el=>{scrollPos[el.dataset.stage]=el.scrollTop;});
   const active=deals.filter(d=>d.stage!=='Cancelled'&&d.stage!=='Closed / Purchased');
-  const filtered=activeFilter==='All'?deals:deals.filter(d=>d.stage===activeFilter);
+  const afterStage=activeFilter==='All'?deals:deals.filter(d=>d.stage===activeFilter);
+  const filtered=searchTerm?afterStage.filter(d=>dealMatchesSearch(d,searchTerm)):afterStage;
   const total=active.reduce((s,d)=>s+Number(d.amount),0);
   const alertDeals=active.filter(d=>hasAlert(d));
   const closingSoon=active.filter(d=>d.close&&diff(d.close)<=7);
@@ -2303,6 +2314,23 @@ function confirmDelete(){const d=deals.find(x=>x.id===editingId);if(!d)return;do
 function deleteDealConfirmed(){deals=deals.filter(d=>d.id!==editingId);editingId=null;window._pendingFbData=null;saveDeals();closeOverlay('confirmOverlay');closeOverlay('editOverlay');render();showToast('Deal deleted.');}
 
 function setFilter(f){activeFilter=f;render();}
+let searchTerm='';
+function onDealSearch(){
+  searchTerm=document.getElementById('dealSearch').value.trim().toLowerCase();
+  document.getElementById('searchClear').style.display=searchTerm?'block':'none';
+  render();
+}
+function clearSearch(){
+  document.getElementById('dealSearch').value='';
+  searchTerm='';
+  document.getElementById('searchClear').style.display='none';
+  render();
+}
+function dealMatchesSearch(d,q){
+  if(!q) return true;
+  const fields=[d.address,d.parcel,d.spv,d.notes,d.titleCompany,d.msHouseNum,d.stage,d.lotFeature,d.waterAvail].filter(Boolean);
+  return fields.some(f=>f.toLowerCase().includes(q));
+}
 function closeOverlay(id){
   document.getElementById(id).classList.remove('open');
   // When the edit modal closes, clear editingId and apply any queued Firebase updates
