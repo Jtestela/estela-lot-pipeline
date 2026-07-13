@@ -810,11 +810,36 @@ function startContactsListener(){
   });
 }
 
+let _assessmentsInitialized=false;
 function startAssessmentsListener(){
   fbAssessmentsRef.on('value', snapshot => {
+    const prev=siteAssessments;
     siteAssessments = snapshot.val() || {};
+    if(_assessmentsInitialized){
+      Object.keys(siteAssessments).forEach(dealId=>{
+        const a=siteAssessments[dealId];
+        if(a&&a.status==='submitted'&&(!prev[dealId]||prev[dealId].submittedAt!==a.submittedAt)){
+          const addr=a.address||'Deal #'+dealId;
+          const pm=a.pmName||'PM';
+          showToast('📋 Site assessment completed for '+addr+' by '+pm,'green',8000);
+          sendBrowserNotification('Site Assessment Completed','Assessment for '+addr+' submitted by '+pm);
+        }
+      });
+    }
+    _assessmentsInitialized=true;
     render();
   });
+}
+function requestNotificationPermission(){
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+function sendBrowserNotification(title,body){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='granted'){
+    try{new Notification(title,{body:body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="24" font-size="24">📋</text></svg>',tag:'site-eval-'+Date.now()});}catch(e){}
+  }
 }
 
 function getLinkedDeals(contact){
@@ -1442,7 +1467,7 @@ function diff(s){const d=pd(s);if(!d)return null;return Math.round((d-TODAY)/864
 function sanitize(s){return s.replace(/[<>:"/\\|?*]/g,'').replace(/\s+/g,' ').trim().substring(0,60);}
 function fileIcon(n){if(!n)return'📄';const e=n.split('.').pop().toLowerCase();if(e==='pdf')return'📕';if(['doc','docx'].includes(e))return'📘';if(['jpg','jpeg','png'].includes(e))return'🖼️';return'📄';}
 function fmtSize(b){if(!b)return'';if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB';}
-function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.className='toast',3000);}
+function showToast(msg,type='',duration=3000){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.className='toast',duration);}
 
 function datePill(s,paid=false){
   if(!s)return'<span class="pill pill-na">Not set</span>';
@@ -3381,6 +3406,7 @@ firebase.auth().signInAnonymously().then(()=>{
   startFirebaseListener();
   startContactsListener();
   startAssessmentsListener();
+  requestNotificationPermission();
 }).catch(err=>{
   console.error('[auth] Anonymous sign-in failed:', err);
   updateSyncStatus('error');
