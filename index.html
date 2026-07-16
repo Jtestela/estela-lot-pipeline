@@ -1464,7 +1464,7 @@ function pd(s){if(!s)return null;const[y,m,d]=s.split('-');return new Date(+y,+m
 function fd(s){if(!s)return '—';return pd(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function fm(n){return n?'$'+Number(n).toLocaleString():'—';}
 function diff(s){const d=pd(s);if(!d)return null;return Math.round((d-TODAY)/86400000);}
-function sanitize(s){return s.replace(/[<>:"/\\|?*]/g,'').replace(/\s+/g,' ').trim().substring(0,60);}
+function sanitize(s){return s.replace(/[<>:"/\\|?*]/g,'').replace(/\s+/g,' ').trim().replace(/\.+$/,'').substring(0,60);}
 function fileIcon(n){if(!n)return'📄';const e=n.split('.').pop().toLowerCase();if(e==='pdf')return'📕';if(['doc','docx'].includes(e))return'📘';if(['jpg','jpeg','png'].includes(e))return'🖼️';return'📄';}
 function fmtSize(b){if(!b)return'';if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB';}
 function showToast(msg,type='',duration=3000){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.className='toast',duration);}
