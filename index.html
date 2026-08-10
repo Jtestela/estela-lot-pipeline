@@ -2281,13 +2281,7 @@ function autoSaveIfEditing(){
   });
 })();
 
-let _savingDeal=false;
 async function saveDeal(silent){
-  if(_savingDeal)return;
-  _savingDeal=true;
-  try{ await _saveDealInner(silent); }finally{ _savingDeal=false; }
-}
-async function _saveDealInner(silent){
   const address=document.getElementById('f_address').value.trim();
   if(!address){alert('Property address is required.');return;}
   const spvEl=document.getElementById('f_spv').value;
@@ -2318,7 +2312,7 @@ async function _saveDealInner(silent){
     pendingAttachments.forEach(a=>{delete a._pendingFile;});
   }
   deal.attachments=pendingAttachments;
-  if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else{deals.push(deal);editingId=deal.id;}
+  if(editingId){const i=deals.findIndex(d=>d.id===editingId);if(i>-1)deals[i]=deal;}else deals.push(deal);
   // Sync title company info to contacts directory
   if(deal.titleCompany){
     const existing=contacts.find(c=>c.type==='title'&&c.company&&c.company.toLowerCase()===deal.titleCompany.toLowerCase());
@@ -3402,13 +3396,6 @@ document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',
   if(changed) saveDeals();
   localStorage.setItem('_lotFeatureCO2CR','done');
 })();
-function _runDupeMigration(){
-  if(localStorage.getItem('_removeDupeUlmaceal')) return;
-  const before=deals.length;
-  deals=deals.filter(d=>!(d.id===81||d.id===82));
-  if(deals.length<before){ saveDeals(); }
-  localStorage.setItem('_removeDupeUlmaceal','done');
-}
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
 // ── FIREBASE ANONYMOUS AUTH + REAL-TIME LISTENER ──────────────────────────────
@@ -3467,7 +3454,6 @@ function startFirebaseListener(){
       }
       fbReady = true;
       updateSyncStatus('saved');
-      _runDupeMigration();
     } else {
       // Firebase returned empty/null.
       fbReady = true;
