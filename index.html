@@ -3402,13 +3402,13 @@ document.getElementById('navDate').textContent=TODAY.toLocaleDateString('en-US',
   if(changed) saveDeals();
   localStorage.setItem('_lotFeatureCO2CR','done');
 })();
-(function(){
+function _runDupeMigration(){
   if(localStorage.getItem('_removeDupeUlmaceal')) return;
   const before=deals.length;
   deals=deals.filter(d=>!(d.id===81||d.id===82));
-  if(deals.length<before) saveDeals();
+  if(deals.length<before){ saveDeals(); }
   localStorage.setItem('_removeDupeUlmaceal','done');
-})();
+}
 // Load docs folder + data sync folder, then render
 // readDealsFromFile (called inside loadDataFolder) will re-render if file data is found
 // ── FIREBASE ANONYMOUS AUTH + REAL-TIME LISTENER ──────────────────────────────
@@ -3467,6 +3467,7 @@ function startFirebaseListener(){
       }
       fbReady = true;
       updateSyncStatus('saved');
+      _runDupeMigration();
     } else {
       // Firebase returned empty/null.
       fbReady = true;
