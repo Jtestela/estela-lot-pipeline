@@ -1520,11 +1520,27 @@ async function createDealFolder(dealAddress){
   try{
     const folderName=sanitize(dealAddress.split(',')[0]);
     const dealDir=await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
-    // Create all category subfolders so the deal folder is organized from day one
     for(const cat of DOC_CATEGORIES){
       try{ await dealDir.getDirectoryHandle(cat.folder,{create:true}); }catch(e){}
     }
   }catch(e){}
+}
+const ACTIVE_FOLDER_STAGES=['Offer Letter','Under Contract (Escrow)','Due Diligences','Clear to Close','Permitting'];
+async function syncAllDealFolders(){
+  if(!docsFolderHandle) return;
+  let created=0;
+  for(const d of deals){
+    if(!ACTIVE_FOLDER_STAGES.includes(d.stage)||!d.address) continue;
+    try{
+      const folderName=sanitize(d.address.split(',')[0]);
+      const dealDir=await docsFolderHandle.getDirectoryHandle(folderName,{create:true});
+      for(const cat of DOC_CATEGORIES){
+        try{ await dealDir.getDirectoryHandle(cat.folder,{create:true}); }catch(e){}
+      }
+      created++;
+    }catch(e){}
+  }
+  console.log('[syncFolders] Ensured folders for '+created+' active deals');
 }
 
 // Helper: resolve the directory handle (deal dir + optional category subfolder) for an attachment,
@@ -3450,6 +3466,7 @@ function startFirebaseListener(){
           localStorage.setItem(LS_KEY+'_fbSyncedAt', Date.now().toString());
           render();
           if(fbReady) showToast('🔄 Updated from another device','green');
+          syncAllDealFolders();
         }
       }
       fbReady = true;
@@ -3470,8 +3487,8 @@ function startFirebaseListener(){
 
 Promise.all([loadFolderHandle(), loadDataFolder()]).then(()=>{
   render();
-  // Once everything's loaded, run the daily backup check in the background
   setTimeout(()=>performDailyBackupIfNeeded(), 3000);
+  setTimeout(()=>syncAllDealFolders(), 5000);
 });
 </script>
 </body>
