@@ -1411,6 +1411,7 @@ async function syncDocsFolder(){
   if(!docsFolderHandle){showToast('Set your Documents folder first.','red');return;}
   const btn=document.getElementById('btnSync');
   if(btn){btn.textContent='⏳ Syncing…';btn.disabled=true;}
+  await syncAllDealFolders();
   let totalFiles=0,totalDeals=0;
   try{
     for(const deal of deals){
